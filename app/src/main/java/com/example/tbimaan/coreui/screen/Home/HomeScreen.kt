@@ -24,13 +24,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign // <<< IMPORT BARU YANG DIPERLUKAN
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tbimaan.R
 
-// ... (Data class ModuleInfo biarkan sama)
 data class ModuleInfo(
     val title: String,
     val description: String,
@@ -43,7 +42,6 @@ fun HomeScreen(
     onKeuanganClick: () -> Unit,
     onKegiatanClick: () -> Unit
 ) {
-    // ... (Isi fungsi HomeScreen biarkan sama)
     val context = LocalContext.current
     val modules = listOf(
         ModuleInfo(
@@ -136,7 +134,6 @@ fun HomeScreen(
     }
 }
 
-// ... (ImaanInfoCard biarkan sama)
 @Composable
 fun ImaanInfoCard(textColorPrimary: Color, textColorSecondary: Color) {
     Card(
@@ -181,8 +178,6 @@ fun ImaanInfoCard(textColorPrimary: Color, textColorSecondary: Color) {
     }
 }
 
-
-// ===== PERBAIKAN UTAMA ADA DI FUNGSI INI =====
 @Composable
 fun ModuleCard(moduleInfo: ModuleInfo, modifier: Modifier, cardColor: Color, textColorPrimary: Color, textColorSecondary: Color) {
     Card(
@@ -191,7 +186,6 @@ fun ModuleCard(moduleInfo: ModuleInfo, modifier: Modifier, cardColor: Color, tex
         colors = CardDefaults.cardColors(containerColor = cardColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        // 1. Column sekarang diatur agar item-item di dalamnya rata tengah secara horizontal
         Column(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally // <<< DARI 'Start' MENJADI 'CenterHorizontally'
@@ -204,19 +198,17 @@ fun ModuleCard(moduleInfo: ModuleInfo, modifier: Modifier, cardColor: Color, tex
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 2. Text deskripsi juga dibuat rata tengah
             Text(
                 text = moduleInfo.description,
                 style = MaterialTheme.typography.bodySmall,
                 color = textColorSecondary,
                 lineHeight = 16.sp,
-                textAlign = TextAlign.Center // <<< TAMBAHAN UNTUK MEMASTIKAN TEKS RATA TENGAH
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
-// ... (BottomNavBar dan BottomNavItem biarkan sama)
 @Composable
 fun BottomNavBar(onInventarisClick: () -> Unit, onKeuanganClick: () -> Unit, onKegiatanClick: () -> Unit) {
     Surface(

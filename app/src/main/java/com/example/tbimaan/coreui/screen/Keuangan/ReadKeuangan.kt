@@ -1,6 +1,6 @@
 package com.example.tbimaan.coreui.screen.Keuangan
 
-import androidx.compose.foundation.Image // <<< IMPORT BARU
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,8 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale // <<< IMPORT BARU
-import androidx.compose.ui.res.painterResource // <<< IMPORT BARU
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.example.tbimaan.R // <<< IMPORT BARU
-import com.example.tbimaan.coreui.components.BackButtonOnImage // <<< IMPORT BARU
+import com.example.tbimaan.R
+import com.example.tbimaan.coreui.components.BackButtonOnImage
 import com.example.tbimaan.coreui.navigation.KEUANGAN_GRAPH_ROUTE
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,9 +76,7 @@ fun ReadKeuanganScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-            // Hapus padding horizontal dari sini agar gambar bisa penuh
         ) {
-            // ===== PERBAIKAN #1: TAMBAHKAN GAMBAR HEADER SEPERTI DI INVENTARIS =====
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -96,9 +94,7 @@ fun ReadKeuanganScreen(
                     modifier = Modifier.align(Alignment.TopStart)
                 )
             }
-            // ======================================================================
 
-            // ===== PERBAIKAN #2: Bungkus sisa konten dengan Column dan beri padding =====
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -145,12 +141,11 @@ fun ReadKeuanganScreen(
                     )
                 }
             }
-            // =========================================================================
+
         }
     }
 }
 
-// Komponen BottomAppBar dan BottomNavItem tidak ada perubahan
 @Composable
 private fun KeuanganBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
     Surface(shadowElevation = 8.dp, color = Color(0xFFF8F8F8)) {

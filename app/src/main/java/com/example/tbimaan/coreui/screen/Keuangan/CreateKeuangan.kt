@@ -36,7 +36,7 @@ import com.example.tbimaan.coreui.navigation.KEUANGAN_GRAPH_ROUTE
 @Composable
 fun CreateKeuanganScreen(
     navController: NavController,
-    onNavigate: (String) -> Unit, // <<< TAMBAHKAN PARAMETER INI
+    onNavigate: (String) -> Unit,
     onSave: () -> Unit
 ) {
     var keterangan by remember { mutableStateOf("") }
@@ -59,7 +59,6 @@ fun CreateKeuanganScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        // ===== PERBAIKAN: TAMBAHKAN BOTTOMNAVBAR DI SINI =====
         bottomBar = {
             KeuanganBottomAppBar(
                 onNavigate = onNavigate,
@@ -123,7 +122,6 @@ fun CreateKeuanganScreen(
     }
 }
 
-// ===== PERBAIKAN: SALIN KOMPONEN BOTTOMNAVBAR KE SINI =====
 @Composable
 private fun KeuanganBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
     Surface(shadowElevation = 8.dp, color = Color(0xFFF8F8F8)) {

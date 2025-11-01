@@ -11,38 +11,57 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.example.tbimaan.coreui.screen.Home.HomeScreen
+import com.example.tbimaan.coreui.screen.Home.LandingPageScreen
+import com.example.tbimaan.coreui.screen.Home.LandingPage2Screen // <<< IMPORT BARU
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "home") {
+    // Aplikasi dimulai dari halaman landing pertama
+    NavHost(navController = navController, startDestination = "landing") {
 
-        // Rute untuk Halaman Utama (sudah benar)
-        composable("home") {
-            HomeScreen(
-                onInventarisClick = {
-                    // PERINTAH: Saat kartu inventaris diklik, buka grup rute 'INVENTARIS_GRAPH_ROUTE'
-                    navController.navigate(INVENTARIS_GRAPH_ROUTE)
+        // Rute untuk halaman landing pertama
+        composable("landing") {
+            LandingPageScreen(
+                onGetStartedClick = {
+
+                    navController.navigate("landing2")
                 },
-                onKeuanganClick = {
-                    navController.navigate(KEUANGAN_GRAPH_ROUTE)
-                },
-                onKegiatanClick = {
-                    navController.navigate("kegiatan_graph")
+                onLoginClick = {
+
+                    navController.navigate("home") {
+                        popUpTo("landing") { inclusive = true }
+                    }
                 }
             )
         }
 
-        // --- Memanggil semua grup navigasi (nested graph) dari sini ---
+        // RUTE BARU: Untuk halaman landing kedua
+        composable("landing2") {
+            LandingPage2Screen(
+                onNextClick = {
 
-        // Memanggil grafik navigasi untuk modul Keuangan
+                    navController.navigate("home") {
+
+                        popUpTo("landing") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Rute untuk Halaman Utama (Home)
+        composable("home") {
+            HomeScreen(
+                onInventarisClick = { navController.navigate(INVENTARIS_GRAPH_ROUTE) },
+                onKeuanganClick = { navController.navigate(KEUANGAN_GRAPH_ROUTE) },
+                onKegiatanClick = { navController.navigate("kegiatan_graph") }
+            )
+        }
+
+        // --- Grup navigasi modul (tidak ada perubahan) ---
         keuanganNavGraph(navController)
-
-        // Memanggil grafik navigasi untuk modul Inventaris
         inventarisNavGraph(navController)
-
-        // Placeholder untuk modul Kegiatan (biarkan untuk nanti)
         navigation(startDestination = "read_kegiatan", route = "kegiatan_graph") {
             composable("read_kegiatan") {
                 DummyScreen(screenName = "Halaman Kegiatan")
@@ -51,7 +70,7 @@ fun AppNavigation() {
     }
 }
 
-// Fungsi dummy sementara (biarkan seperti ini)
+// Fungsi dummy sementara (tidak ada perubahan)
 @Composable
 private fun DummyScreen(screenName: String) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
