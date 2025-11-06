@@ -8,28 +8,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.navigation
+import androidx.navigation.compose.navigation // Import ini mungkin tidak lagi digunakan, tapi tidak apa-apa
 import androidx.navigation.compose.rememberNavController
 import com.example.tbimaan.coreui.screen.Home.HomeScreen
 import com.example.tbimaan.coreui.screen.Home.LandingPageScreen
-import com.example.tbimaan.coreui.screen.Home.LandingPage2Screen // <<< IMPORT BARU
+import com.example.tbimaan.coreui.screen.Home.LandingPage2Screen
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    // Aplikasi dimulai dari halaman landing pertama
     NavHost(navController = navController, startDestination = "landing") {
 
-        // Rute untuk halaman landing pertama
         composable("landing") {
             LandingPageScreen(
                 onGetStartedClick = {
-
                     navController.navigate("landing2")
                 },
                 onLoginClick = {
-
                     navController.navigate("home") {
                         popUpTo("landing") { inclusive = true }
                     }
@@ -37,36 +33,32 @@ fun AppNavigation() {
             )
         }
 
-        // RUTE BARU: Untuk halaman landing kedua
         composable("landing2") {
             LandingPage2Screen(
                 onNextClick = {
-
                     navController.navigate("home") {
-
                         popUpTo("landing") { inclusive = true }
                     }
                 }
             )
         }
 
-        // Rute untuk Halaman Utama (Home)
         composable("home") {
             HomeScreen(
                 onInventarisClick = { navController.navigate(INVENTARIS_GRAPH_ROUTE) },
                 onKeuanganClick = { navController.navigate(KEUANGAN_GRAPH_ROUTE) },
-                onKegiatanClick = { navController.navigate("kegiatan_graph") }
+                onKegiatanClick = { navController.navigate(KEGIATAN_GRAPH_ROUTE) } // Rute ini sudah benar
             )
         }
 
-        // --- Grup navigasi modul (tidak ada perubahan) ---
+        // --- GRUP NAVIGASI MODUL ---
         keuanganNavGraph(navController)
         inventarisNavGraph(navController)
-        navigation(startDestination = "read_kegiatan", route = "kegiatan_graph") {
-            composable("read_kegiatan") {
-                DummyScreen(screenName = "Halaman Kegiatan")
-            }
-        }
+
+        // ===== PERBAIKAN UTAMA DI SINI =====
+        // Ganti blok navigasi dummy dengan panggilan ke graph navigasi Kegiatan yang sebenarnya.
+        kegiatanNavGraph(navController)
+        // ===================================
     }
 }
 
