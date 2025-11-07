@@ -1,6 +1,7 @@
 package com.example.tbimaan.coreui.navigation
 
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
@@ -15,20 +16,25 @@ fun NavGraphBuilder.inventarisNavGraph(navController: NavController) {
         startDestination = "read_inventaris",
         route = INVENTARIS_GRAPH_ROUTE
     ) {
-        // Fungsi navigasi yang bisa dipakai ulang di dalam graph ini
+        // Fungsi navigasi ini sudah benar dan akan kita teruskan ke halaman Update
         val onNavigate: (String) -> Unit = { route ->
             navController.navigate(route) {
-                popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
                 launchSingleTop = true
+                restoreState = true
             }
         }
 
         composable("read_inventaris") {
             ReadInventarisScreen(
                 navController = navController,
-                onNavigate = onNavigate, // <<< PERBARUI DI SINI
+                onNavigate = onNavigate,
                 onAddClick = { navController.navigate("create_inventaris") },
-                onEditClick = { /* ... */ }
+                onEditClick = { itemId ->
+                    navController.navigate("update_inventaris/$itemId")
+                }
             )
         }
 
@@ -41,21 +47,16 @@ fun NavGraphBuilder.inventarisNavGraph(navController: NavController) {
             )
         }
 
-        composable("update_inventaris/{nama}/{jumlah}/{kondisi}/{tanggal}") { backStackEntry ->
-            val nama = backStackEntry.arguments?.getString("nama") ?: ""
-            val jumlah = backStackEntry.arguments?.getString("jumlah") ?: ""
-            val kondisi = backStackEntry.arguments?.getString("kondisi") ?: ""
-            val tanggal = backStackEntry.arguments?.getString("tanggal") ?: ""
+        composable("update_inventaris/{itemId}") { backStackEntry ->
+            val itemId = backStackEntry.arguments?.getString("itemId")
 
             UpdateInventarisScreen(
                 navController = navController,
+                itemId = itemId ?: "ID_TIDAK_DITEMUKAN",
                 onBackClick = { navController.popBackStack() },
                 onUpdateClick = { navController.popBackStack() },
                 onDeleteClick = { navController.popBackStack() },
-                namaAwal = nama,
-                jumlahAwal = jumlah,
-                kondisiAwal = kondisi,
-                tanggalAwal = tanggal
+                onNavigate = onNavigate // Fungsi onNavigate sudah tersambung dengan benar
             )
         }
     }

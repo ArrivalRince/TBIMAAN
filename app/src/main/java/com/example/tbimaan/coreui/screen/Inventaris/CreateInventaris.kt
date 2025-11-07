@@ -1,13 +1,18 @@
 package com.example.tbimaan.coreui.screen.Inventaris
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.outlined.Inventory
@@ -18,9 +23,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,10 +36,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 import com.example.tbimaan.R
 import com.example.tbimaan.coreui.components.BackButtonOnImage
 import com.example.tbimaan.coreui.components.PrimaryButton
 import com.example.tbimaan.coreui.components.SecondaryButton
+import com.example.tbimaan.coreui.navigation.INVENTARIS_GRAPH_ROUTE
+import com.example.tbimaan.coreui.screen.Keuangan.getTempUri // Menggunakan kembali fungsi yang sudah ada
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,12 +56,40 @@ fun CreateInventarisScreen(
     var jumlahBarang by remember { mutableStateOf("") }
     var kondisi by remember { mutableStateOf("") }
     var tanggal by remember { mutableStateOf("") }
+    val textColorPrimary = Color(0xFF1E5B8A)
+
+    // ===== LOGIKA UPLOAD FOTO DIMULAI DI SINI =====
+    val context = LocalContext.current
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var showImageSourceDialog by remember { mutableStateOf(false) }
+    var tempUriHolder by remember { mutableStateOf<Uri?>(null) }
+
+    // Launcher galeri
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            if (uri != null) {
+                imageUri = uri
+            }
+        }
+    )
+
+    // Launcher kamera
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+        onResult = { success ->
+            if (success) {
+                imageUri = tempUriHolder
+            }
+        }
+    )
+    // =================================================
 
     Scaffold(
         bottomBar = {
             InventarisBottomAppBar(
                 onNavigate = onNavigate,
-                currentRoute = "inventaris_graph"
+                currentRoute = INVENTARIS_GRAPH_ROUTE
             )
         },
         containerColor = Color.White
@@ -73,7 +111,6 @@ fun CreateInventarisScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
-                // PANGGIL KOMPONEN TOMBOL BARU
                 BackButtonOnImage(
                     onClick = onCancel,
                     modifier = Modifier.align(Alignment.TopStart)
@@ -84,7 +121,7 @@ fun CreateInventarisScreen(
                 text = "Tambahkan Data Inventaris Baru",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E5B8A),
+                color = textColorPrimary,
                 modifier = Modifier
                     .padding(top = 24.dp)
                     .align(Alignment.CenterHorizontally)
@@ -97,21 +134,42 @@ fun CreateInventarisScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedTextField(
-                    value = namaBarang,
-                    onValueChange = { namaBarang = it },
-                    label = { Text("Nama Barang") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                // ... (TextFields lain biarkan sama)
-                OutlinedTextField(value = jumlahBarang, onValueChange = { jumlahBarang = it }, label = { Text("Jumlah Barang") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = kondisi, onValueChange = { kondisi = it }, label = { Text("Kondisi (contoh: Baik, Rusak)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = tanggal, onValueChange = { tanggal = it }, label = { Text("Tanggal Pembelian (DD/MM/YY)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = namaBarang, onValueChange = { namaBarang = it }, label = { Text("Nama Barang") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                OutlinedTextField(value = jumlahBarang, onValueChange = { jumlahBarang = it }, label = { Text("Jumlah Barang") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                OutlinedTextField(value = kondisi, onValueChange = { kondisi = it }, label = { Text("Kondisi (contoh: Baik, Rusak)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                OutlinedTextField(value = tanggal, onValueChange = { tanggal = it }, label = { Text("Tanggal Pembelian (DD/MM/YY)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+
+                // ===== UI UNTUK UPLOAD FOTO =====
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFF0F5F9))
+                        .border(1.dp, Color(0xFFDDEEFF), RoundedCornerShape(16.dp))
+                        .clickable { showImageSourceDialog = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (imageUri == null) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = "Upload Icon", tint = textColorPrimary.copy(alpha = 0.8f), modifier = Modifier.size(40.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(text = "Upload Foto", color = textColorPrimary, fontWeight = FontWeight.SemiBold)
+                        }
+                    } else {
+                        AsyncImage(
+                            model = imageUri,
+                            contentDescription = "Foto Barang Terpilih",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+                // ======================================
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // PANGGIL KOMPONEN TOMBOL BARU
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -133,9 +191,35 @@ fun CreateInventarisScreen(
             }
         }
     }
+
+    // ===== DIALOG PILIHAN SUMBER GAMBAR =====
+    if (showImageSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showImageSourceDialog = false },
+            title = { Text("Pilih Sumber Foto") },
+            text = { Text("Pilih dari Galeri atau ambil foto baru?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showImageSourceDialog = false
+                    val tempUri = getTempUri(context)
+                    tempUriHolder = tempUri
+                    cameraLauncher.launch(tempUri)
+                }) { Text("Kamera") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showImageSourceDialog = false
+                    galleryLauncher.launch("image/*")
+                }) { Text("Galeri") }
+            }
+        )
+    }
+    // =========================================
 }
 
-// ... (Sisa file CreateInventaris.kt seperti InventarisBottomAppBar, BottomNavItem, dan Preview biarkan sama persis)
+
+// --- Komponen BottomAppBar dan Preview tidak berubah ---
+
 @Composable
 private fun InventarisBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
     Surface(shadowElevation = 8.dp, color = Color(0xFFF8F8F8)) {
@@ -144,10 +228,10 @@ private fun InventarisBottomAppBar(onNavigate: (String) -> Unit, currentRoute: S
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BottomNavItem(label = "Home", icon = Icons.Default.Home, isSelected = currentRoute == "home", onClick = { onNavigate("home") })
-            BottomNavItem(label = "Inventaris", icon = Icons.Outlined.Inventory, isSelected = currentRoute == "inventaris_graph", onClick = { /* ... */ })
-            BottomNavItem(label = "Kegiatan", icon = Icons.Default.List, isSelected = currentRoute == "kegiatan_graph", onClick = { onNavigate("kegiatan_graph") })
-            BottomNavItem(label = "Keuangan", icon = Icons.Outlined.Paid, isSelected = currentRoute == "keuangan_graph", onClick = { onNavigate("keuangan_graph") })
+            BottomNavItem(label = "Home", icon = Icons.Default.Home, isSelected = false, onClick = { onNavigate("home") })
+            BottomNavItem(label = "Inventaris", icon = Icons.Outlined.Inventory, isSelected = true, onClick = { /* Sedang di sini */ })
+            BottomNavItem(label = "Kegiatan", icon = Icons.Default.List, isSelected = false, onClick = { onNavigate("kegiatan_graph") })
+            BottomNavItem(label = "Keuangan", icon = Icons.Outlined.Paid, isSelected = false, onClick = { onNavigate("keuangan_graph") })
         }
     }
 }
