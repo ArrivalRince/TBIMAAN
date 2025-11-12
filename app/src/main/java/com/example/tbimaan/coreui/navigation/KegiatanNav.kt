@@ -30,7 +30,7 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
                 navController = navController,
                 onNavigate = onNavigate,
                 onAddClick = { navController.navigate("create_kegiatan") },
-                onEditClick = { route -> navController.navigate(route) } // ✅ ubah ini
+                onEditClick = { route -> navController.navigate(route) }
             )
         }
 
@@ -44,6 +44,7 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
             )
         }
 
+        // 🔹 Halaman Update Kegiatan
         composable(
             "update_kegiatan/{nama}/{tanggal}/{waktu}/{lokasi}/{penceramah}/{deskripsi}/{status}",
             arguments = listOf(
@@ -58,6 +59,7 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
         ) { backStackEntry ->
             UpdateKegiatanScreen(
                 navController = navController,
+                onNavigate = onNavigate, // ✅ DITAMBAHKAN INI
                 namaAwal = backStackEntry.arguments?.getString("nama") ?: "",
                 tanggalAwal = backStackEntry.arguments?.getString("tanggal") ?: "",
                 waktuAwal = backStackEntry.arguments?.getString("waktu") ?: "",

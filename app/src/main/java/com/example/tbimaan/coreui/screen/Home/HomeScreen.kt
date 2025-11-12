@@ -1,6 +1,5 @@
 package com.example.tbimaan.coreui.screen.Home
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,7 +11,6 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material.icons.outlined.Paid
-
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,7 +38,8 @@ data class ModuleInfo(
 fun HomeScreen(
     onInventarisClick: () -> Unit,
     onKeuanganClick: () -> Unit,
-    onKegiatanClick: () -> Unit
+    onKegiatanClick: () -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     val context = LocalContext.current
     val modules = listOf(
@@ -61,7 +60,7 @@ fun HomeScreen(
         )
     )
 
-    val backgroundColor = Color(0xFFE3F2FD)
+    val backgroundColor = Color(0xFFF0F4F8)
     val cardColor = Color.White
     val textColorPrimary = Color(0xFF0D47A1)
     val textColorSecondary = Color(0xFF424242)
@@ -71,43 +70,50 @@ fun HomeScreen(
             BottomNavBar(
                 onInventarisClick = onInventarisClick,
                 onKeuanganClick = onKeuanganClick,
-                onKegiatanClick = onKegiatanClick
+                onKegiatanClick = onKegiatanClick,
+                onHomeClick = {}
             )
         },
         containerColor = backgroundColor
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 0.dp, bottom = innerPadding.calculateBottomPadding())
+                .padding(bottom = innerPadding.calculateBottomPadding())
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.masjid),
-                contentDescription = "Latar Belakang Masjid",
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.4f),
-                contentScale = ContentScale.Crop
-            )
-            IconButton(
-                onClick = { Toast.makeText(context, "Settings Clicked!", Toast.LENGTH_SHORT).show() },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(16.dp)
-                    .background(Color.Black.copy(alpha = 0.3f), shape = RoundedCornerShape(50))
+                    .fillMaxHeight(0.4f)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = Color.White
+                Image(
+                    painter = painterResource(id = R.drawable.masjid),
+                    contentDescription = "Latar Belakang Masjid",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .statusBarsPadding()
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.3f), shape = RoundedCornerShape(50))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = Color.White
+                    )
+                }
             }
+
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = (-80).dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.fillMaxHeight(0.25f))
                 ImaanInfoCard(
                     textColorPrimary = textColorPrimary,
                     textColorSecondary = textColorSecondary
@@ -141,7 +147,7 @@ fun ImaanInfoCard(textColorPrimary: Color, textColorSecondary: Color) {
             .fillMaxWidth()
             .padding(horizontal = 24.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f)),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Row(
@@ -156,7 +162,9 @@ fun ImaanInfoCard(textColorPrimary: Color, textColorSecondary: Color) {
                     color = textColorPrimary,
                 )
                 Divider(
-                    modifier = Modifier.width(60.dp).padding(vertical = 4.dp),
+                    modifier = Modifier
+                        .width(60.dp)
+                        .padding(vertical = 4.dp),
                     thickness = 2.dp,
                     color = textColorPrimary
                 )
@@ -172,23 +180,34 @@ fun ImaanInfoCard(textColorPrimary: Color, textColorSecondary: Color) {
             Image(
                 painter = painterResource(id = R.drawable.logo_imaan),
                 contentDescription = "Logo IMAAN",
-                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp))
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(12.dp))
             )
         }
     }
 }
 
+// ======================= PERBAIKAN UTAMA DI SINI =======================
 @Composable
-fun ModuleCard(moduleInfo: ModuleInfo, modifier: Modifier, cardColor: Color, textColorPrimary: Color, textColorSecondary: Color) {
+fun ModuleCard(
+    moduleInfo: ModuleInfo,
+    modifier: Modifier,
+    cardColor: Color,
+    textColorPrimary: Color,
+    textColorSecondary: Color
+) {
     Card(
         modifier = modifier.clickable(onClick = moduleInfo.onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
+        // KEMBALIKAN KE KODE SEBELUMNYA:
+        // Hapus Modifier.height() agar tinggi box menyesuaikan konten di dalamnya.
         Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally // <<< DARI 'Start' MENJADI 'CenterHorizontally'
+            modifier = Modifier.padding(16.dp), // Hanya padding, tanpa height
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = moduleInfo.title,
@@ -197,7 +216,6 @@ fun ModuleCard(moduleInfo: ModuleInfo, modifier: Modifier, cardColor: Color, tex
                 color = textColorPrimary
             )
             Spacer(modifier = Modifier.height(8.dp))
-
             Text(
                 text = moduleInfo.description,
                 style = MaterialTheme.typography.bodySmall,
@@ -208,24 +226,30 @@ fun ModuleCard(moduleInfo: ModuleInfo, modifier: Modifier, cardColor: Color, tex
         }
     }
 }
+// =======================================================================
+
 
 @Composable
-fun BottomNavBar(onInventarisClick: () -> Unit, onKeuanganClick: () -> Unit, onKegiatanClick: () -> Unit) {
+fun BottomNavBar(
+    onInventarisClick: () -> Unit,
+    onKeuanganClick: () -> Unit,
+    onKegiatanClick: () -> Unit,
+    onHomeClick: () -> Unit
+) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding(),
+        modifier = Modifier.fillMaxWidth(),
         shadowElevation = 8.dp,
         color = Color.White
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .navigationBarsPadding()
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BottomNavItem(label = "Home", icon = Icons.Default.Home, onClick = {}, isSelected = true)
+            BottomNavItem(label = "Home", icon = Icons.Default.Home, onClick = onHomeClick, isSelected = true)
             BottomNavItem(label = "Inventaris", icon = Icons.Outlined.Inventory, onClick = onInventarisClick)
             BottomNavItem(label = "Kegiatan", icon = Icons.Default.List, onClick = onKegiatanClick)
             BottomNavItem(label = "Keuangan", icon = Icons.Outlined.Paid, onClick = onKeuanganClick)
@@ -234,15 +258,15 @@ fun BottomNavBar(onInventarisClick: () -> Unit, onKeuanganClick: () -> Unit, onK
 }
 
 @Composable
-fun BottomNavItem(label: String, icon: ImageVector, onClick: () -> Unit, isSelected: Boolean = false) {
-    val contentColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray
+private fun RowScope.BottomNavItem(label: String, icon: ImageVector, onClick: () -> Unit, isSelected: Boolean = false) {
+    val contentColor = if (isSelected) Color(0xFF1E5B8A) else Color.Gray
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
-            .height(56.dp)
+            .weight(1f)
+            .height(64.dp)
             .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp)
     ) {
         Icon(imageVector = icon, contentDescription = label, tint = contentColor)
         Spacer(modifier = Modifier.height(4.dp))
@@ -256,9 +280,13 @@ fun BottomNavItem(label: String, icon: ImageVector, onClick: () -> Unit, isSelec
     }
 }
 
-
-@Preview(showBackground = true)
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
 fun HomeScreenPreview() {
-    HomeScreen(onInventarisClick = {}, onKeuanganClick = {}, onKegiatanClick = {})
+    HomeScreen(
+        onInventarisClick = {},
+        onKeuanganClick = {},
+        onKegiatanClick = {},
+        onSettingsClick = {}
+    )
 }

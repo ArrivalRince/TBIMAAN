@@ -41,8 +41,6 @@ import com.example.tbimaan.R
 import com.example.tbimaan.coreui.navigation.KEUANGAN_GRAPH_ROUTE
 import java.io.File
 
-// ===== PERBAIKAN UTAMA: PINDAHKAN FUNGSI INI KE LUAR COMPOSABLE =====
-// Dengan berada di sini, fungsi ini bisa diakses oleh file lain dalam package yang sama.
 fun getTempUri(context: Context): Uri {
     val tempFile = File.createTempFile("temp_image_${System.currentTimeMillis()}", ".jpg", context.cacheDir).apply {
         createNewFile()
@@ -50,7 +48,6 @@ fun getTempUri(context: Context): Uri {
     }
     return FileProvider.getUriForFile(context, "${context.packageName}.provider", tempFile)
 }
-// =====================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,20 +68,24 @@ fun CreateKeuanganScreen(
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
 
-    // Launcher untuk memilih gambar dari galeri
+    // PERBAIKAN 1: Tambahkan tempUriHolder, sama seperti di CreateInventaris.kt
+    var tempUriHolder by remember { mutableStateOf<Uri?>(null) }
+
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri ->
-            imageUri = uri
+            if (uri != null) {
+                imageUri = uri
+            }
         }
     )
 
-    // Launcher untuk mengambil foto dari kamera
+    // PERBAIKAN 2: Perbarui onResult pada cameraLauncher
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
-            if (!success) {
-                imageUri = null
+            if (success) {
+                imageUri = tempUriHolder // Set imageUri dari holder jika berhasil
             }
         }
     )
@@ -110,7 +111,6 @@ fun CreateKeuanganScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // ... (Kode UI lainnya tidak perlu diubah, sudah benar)
             Image(
                 painter = painterResource(id = R.drawable.masjid),
                 contentDescription = "Header Masjid",
@@ -186,6 +186,7 @@ fun CreateKeuanganScreen(
         }
     }
 
+    // PERBAIKAN 3: Perbarui logika AlertDialog agar sama
     if (showImageSourceDialog) {
         AlertDialog(
             onDismissRequest = { showImageSourceDialog = false },
@@ -195,8 +196,8 @@ fun CreateKeuanganScreen(
                 TextButton(onClick = {
                     showImageSourceDialog = false
                     val tempUri = getTempUri(context)
-                    imageUri = tempUri
-                    cameraLauncher.launch(tempUri)
+                    tempUriHolder = tempUri // Simpan URI ke holder
+                    cameraLauncher.launch(tempUri) // Berikan URI ke kamera
                 }) { Text("Kamera") }
             },
             dismissButton = {
@@ -209,7 +210,8 @@ fun CreateKeuanganScreen(
     }
 }
 
-// ... (Sisa file seperti Preview dan BottomAppBar biarkan sama)
+// ... Sisa file (BottomAppBar, Preview) tidak ada perubahan
+
 @Composable
 private fun KeuanganBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
     Surface(shadowElevation = 8.dp, color = Color(0xFFF8F8F8)) {

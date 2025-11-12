@@ -12,11 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// ... (kode Color Schemes biarkan seperti aslinya)
+
 private val darkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
@@ -28,7 +27,6 @@ private val lightColorScheme = lightColorScheme(
     secondary = PurpleGrey40,
     tertiary = Pink40
 )
-// ...
 
 @Composable
 fun TBIMAANTheme(
@@ -38,7 +36,7 @@ fun TBIMAANTheme(
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
+            val context = androidx.compose.ui.platform.LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         darkTheme -> darkColorScheme
@@ -49,15 +47,15 @@ fun TBIMAANTheme(
         SideEffect {
             val window = (view.context as Activity).window
 
-            // 1. Membuat status bar (atas) transparan
+
             window.statusBarColor = Color.Transparent.toArgb()
 
-            // 2. MEMBUAT NAVIGATION BAR (BAWAH) MENJADI TRANSPARAN
-            window.navigationBarColor = Color.Transparent.toArgb()
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !darkTheme
 
-            // 3. Mengatur agar ikon status bar dan navigation bar terlihat
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
+
+            insetsController.isAppearanceLightNavigationBars = !darkTheme
         }
     }
 

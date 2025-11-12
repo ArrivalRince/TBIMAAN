@@ -50,7 +50,6 @@ fun UpdateKeuanganScreen(
     jumlahAwal: String,
     waktuAwal: String
 ) {
-    // State untuk menampung perubahan pada input fields
     var keterangan by remember { mutableStateOf(keteranganAwal) }
     var jumlah by remember { mutableStateOf(jumlahAwal) }
     var waktu by remember { mutableStateOf(waktuAwal) }
@@ -60,28 +59,27 @@ fun UpdateKeuanganScreen(
     val cardBackgroundColor = Color.White
     val screenBackgroundColor = Color(0xFFF8F9FA)
 
-    // ===== LOGIKA UPLOAD GAMBAR YANG LENGKAP =====
     val context = LocalContext.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
 
-    // Launcher untuk memilih gambar dari galeri
+    // PERBAIKAN 1: Tambahkan tempUriHolder
+    var tempUriHolder by remember { mutableStateOf<Uri?>(null) }
+
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
-        onResult = { uri -> imageUri = uri }
+        onResult = { uri -> if (uri != null) imageUri = uri }
     )
 
-    // Launcher untuk mengambil foto dari kamera
+    // PERBAIKAN 2: Perbarui onResult cameraLauncher
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
-            // Jika user membatalkan pengambilan foto, hapus URI sementara
-            if (!success) {
-                imageUri = null
+            if (success) {
+                imageUri = tempUriHolder
             }
         }
     )
-    // ===============================================
 
     Scaffold(
         bottomBar = {
@@ -151,7 +149,6 @@ fun UpdateKeuanganScreen(
                         shape = RoundedCornerShape(16.dp)
                     )
 
-                    // ===== AREA UPLOAD BUKTI YANG SUDAH BERFUNGSI =====
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -165,14 +162,12 @@ fun UpdateKeuanganScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         if (imageUri == null) {
-                            // Tampilan default jika belum ada gambar
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = "Upload Icon", tint = textColorPrimary.copy(alpha = 0.8f), modifier = Modifier.size(40.dp))
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(text = "Ubah Bukti", color = textColorPrimary, fontWeight = FontWeight.SemiBold)
                             }
                         } else {
-                            // Tampilkan gambar yang dipilih menggunakan Coil
                             AsyncImage(
                                 model = imageUri,
                                 contentDescription = "Bukti Terpilih",
@@ -181,7 +176,6 @@ fun UpdateKeuanganScreen(
                             )
                         }
                     }
-                    // =======================================================
 
                     Button(
                         onClick = onUpdateClick,
@@ -199,7 +193,7 @@ fun UpdateKeuanganScreen(
         }
     }
 
-    // ===== DIALOG PILIHAN SUMBER GAMBAR YANG SUDAH BERFUNGSI =====
+    // PERBAIKAN 3: Perbarui logika AlertDialog agar sama
     if (showImageSourceDialog) {
         AlertDialog(
             onDismissRequest = { showImageSourceDialog = false },
@@ -208,9 +202,8 @@ fun UpdateKeuanganScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showImageSourceDialog = false
-                    // Ini sekarang valid karena `getTempUri` berada di level teratas file `CreateKeuangan.kt`
                     val tempUri = getTempUri(context)
-                    imageUri = tempUri // Set URI sebelum meluncurkan kamera
+                    tempUriHolder = tempUri // Simpan URI ke holder
                     cameraLauncher.launch(tempUri) // Berikan URI ke kamera
                 }) { Text("Kamera") }
             },
@@ -222,10 +215,10 @@ fun UpdateKeuanganScreen(
             }
         )
     }
-    // ===============================================================
 }
 
-// Komponen ini tidak perlu diubah
+// ... Sisa file (BottomAppBar, Preview) tidak ada perubahan
+
 @Composable
 private fun KeuanganBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
     Surface(shadowElevation = 8.dp, color = Color(0xFFF8F8F8)) {
@@ -245,7 +238,6 @@ private fun KeuanganBottomAppBar(onNavigate: (String) -> Unit, currentRoute: Str
     }
 }
 
-// Komponen ini tidak perlu diubah
 @Composable
 private fun RowScope.BottomNavItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
     val contentColor = if (isSelected) Color(0xFF1E5B8A) else Color.Gray
