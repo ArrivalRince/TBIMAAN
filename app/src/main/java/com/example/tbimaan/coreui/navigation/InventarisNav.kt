@@ -1,63 +1,45 @@
 package com.example.tbimaan.coreui.navigation
 
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.example.tbimaan.coreui.screen.Inventaris.CreateInventarisScreen
 import com.example.tbimaan.coreui.screen.Inventaris.ReadInventarisScreen
 import com.example.tbimaan.coreui.screen.Inventaris.UpdateInventarisScreen
+import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
 
 const val INVENTARIS_GRAPH_ROUTE = "inventaris_graph"
 
-fun NavGraphBuilder.inventarisNavGraph(navController: NavController) {
+// File ini sudah benar, asalkan screen-screen yang dipanggilnya juga sudah benar.
+fun NavGraphBuilder.inventarisNavGraph(navController: NavController, viewModel: InventarisViewModel) {
     navigation(
         startDestination = "read_inventaris",
         route = INVENTARIS_GRAPH_ROUTE
     ) {
-        // Fungsi navigasi ini sudah benar dan akan kita teruskan ke halaman Update
-        val onNavigate: (String) -> Unit = { route ->
-            navController.navigate(route) {
-                popUpTo(navController.graph.findStartDestination().id) {
-                    saveState = true
-                }
-                launchSingleTop = true
-                restoreState = true
-            }
-        }
-
+        // Pemanggilan ini SEKARANG sudah cocok dengan ReadInventarisScreen dari Langkah 1
         composable("read_inventaris") {
-            ReadInventarisScreen(
-                navController = navController,
-                onNavigate = onNavigate,
-                onAddClick = { navController.navigate("create_inventaris") },
-                onEditClick = { itemId ->
-                    navController.navigate("update_inventaris/$itemId")
-                }
-            )
+            ReadInventarisScreen(navController = navController, viewModel = viewModel)
         }
 
+        // Pemanggilan ini sudah cocok dengan CreateInventarisScreen yang sudah kita perbaiki
         composable("create_inventaris") {
-            CreateInventarisScreen(
-                navController = navController,
-                onNavigate = onNavigate,
-                onSave = { navController.popBackStack() },
-                onCancel = { navController.popBackStack() }
-            )
+            CreateInventarisScreen(navController = navController, viewModel = viewModel)
         }
 
-        composable("update_inventaris/{itemId}") { backStackEntry ->
-            val itemId = backStackEntry.arguments?.getString("itemId")
-
-            UpdateInventarisScreen(
-                navController = navController,
-                itemId = itemId ?: "ID_TIDAK_DITEMUKAN",
-                onBackClick = { navController.popBackStack() },
-                onUpdateClick = { navController.popBackStack() },
-                onDeleteClick = { navController.popBackStack() },
-                onNavigate = onNavigate // Fungsi onNavigate sudah tersambung dengan benar
-            )
+        // Pemanggilan ini sudah cocok dengan UpdateInventarisScreen yang sudah kita perbaiki
+        composable(
+            route = "update_inventaris/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id")
+            if (id != null) {
+                UpdateInventarisScreen(navController = navController, id = id, viewModel = viewModel)
+            } else {
+                navController.popBackStack()
+            }
         }
     }
 }

@@ -70,7 +70,6 @@ fun SettingScreen(
                 .padding(bottom = innerPadding.calculateBottomPadding())
                 .background(screenBgColor)
         ) {
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -98,13 +97,11 @@ fun SettingScreen(
                 }
             }
 
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
             ) {
-
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -142,12 +139,10 @@ fun SettingScreen(
                     }
                 }
 
-                //JUDUL PENGATURAN & SEARCH BAR
                 Text(text = "Pengaturan", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = titleColor, modifier = Modifier.padding(bottom = 16.dp))
                 OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Cari Pengaturan") }, leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search Icon") }, shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = cardColor, unfocusedContainerColor = cardColor, focusedBorderColor = primaryColor, unfocusedBorderColor = Color.LightGray), singleLine = true)
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // menu
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -155,16 +150,43 @@ fun SettingScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                        SettingItem(title = "Profile", icon = Icons.Default.Person, onClick = { Toast.makeText(context, "Profile clicked", Toast.LENGTH_SHORT).show() })
+                        SettingItem(
+                            title = "Profile",
+                            icon = Icons.Default.Person,
+                            onClick = {
+                                navController.navigate("profile")
+                            }
+                        )
+
                         Divider(modifier = Modifier.padding(horizontal = 16.dp))
-                        SettingItem(title = "Info Aplikasi", icon = Icons.Default.Info, onClick = { Toast.makeText(context, "Info Aplikasi clicked", Toast.LENGTH_SHORT).show() })
+
+                        SettingItem(
+                            title = "Info Aplikasi",
+                            icon = Icons.Default.Info,
+                            onClick = {
+                                navController.navigate("info_aplikasi")
+                            }
+                        )
+
                         Divider(modifier = Modifier.padding(horizontal = 16.dp))
-                        SettingItem(title = "Keamanan Akun", icon = Icons.Default.Security, onClick = { Toast.makeText(context, "Keamanan Akun clicked", Toast.LENGTH_SHORT).show() })
+
+                        // =================== PERBAIKAN UTAMA DI SINI ===================
+                        SettingItem(
+                            title = "Keamanan Akun",
+                            icon = Icons.Default.Security,
+                            onClick = {
+                                // Mengubah Toast menjadi navigasi ke halaman keamanan_akun
+                                navController.navigate("keamanan_akun")
+                            }
+                        )
+                        // ===============================================================
+
                         Divider(modifier = Modifier.padding(horizontal = 16.dp))
+
                         SettingItem(
                             title = "Keluar",
                             icon = Icons.AutoMirrored.Filled.Logout,
-                            onClick = { showLogoutDialog = true } // Aksi tetap sama
+                            onClick = { showLogoutDialog = true }
                         )
                     }
                 }
@@ -172,7 +194,6 @@ fun SettingScreen(
         }
     }
 
-    // memanggil Dialog Kustom, bukan AlertDialog standar
     if (showLogoutDialog) {
         CustomLogoutDialog(
             onConfirm = {
@@ -195,12 +216,12 @@ private fun CustomLogoutDialog(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false) // Agar bisa custom lebar
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 32.dp), // Beri jarak dari tepi layar
+                .padding(horizontal = 32.dp),
             contentAlignment = Alignment.Center
         ) {
             Card(
@@ -237,7 +258,7 @@ private fun CustomLogoutDialog(
                                 .weight(1f)
                                 .height(48.dp),
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5A96AB)) // Warna biru-abu
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5A96AB))
                         ) {
                             Text("Ya")
                         }
@@ -247,14 +268,13 @@ private fun CustomLogoutDialog(
                                 .weight(1f)
                                 .height(48.dp),
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD9534F)) // Warna merah
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD9534F))
                         ) {
                             Text("Tidak")
                         }
                     }
                 }
             }
-            // Ikon Logout di atas Card
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -270,13 +290,13 @@ private fun CustomLogoutDialog(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFFCE4E4)), // Latar belakang pink muda
+                            .background(Color(0xFFFCE4E4)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Logout,
                             contentDescription = "Logout Icon",
-                            tint = Color(0xFFD9534F), // Ikon merah
+                            tint = Color(0xFFD9534F),
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -285,7 +305,6 @@ private fun CustomLogoutDialog(
         }
     }
 }
-
 
 @Composable
 private fun SettingItem(title: String, icon: ImageVector, onClick: () -> Unit) {
@@ -296,23 +315,30 @@ private fun SettingItem(title: String, icon: ImageVector, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(imageVector = icon, contentDescription = title, tint = Color.Gray, modifier = Modifier.size(28.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            tint = Color.Gray,
+            modifier = Modifier.size(28.dp)
+        )
         Spacer(modifier = Modifier.width(16.dp))
-        Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray, modifier = Modifier.weight(1f))
-        Icon(imageVector = Icons.Default.ChevronRight, contentDescription = "Go to $title", tint = Color.Gray)
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.DarkGray,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = "Go to $title",
+            tint = Color.Gray
+        )
     }
 }
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun SettingScreenWithDialogPreview() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Gray.copy(alpha = 0.5f)),
-        contentAlignment = Alignment.Center
-    ) {
-        CustomLogoutDialog(onConfirm = {}, onDismiss = {})
-    }
-    // }
+fun SettingScreenPreview() {
+    SettingScreen(navController = rememberNavController())
 }

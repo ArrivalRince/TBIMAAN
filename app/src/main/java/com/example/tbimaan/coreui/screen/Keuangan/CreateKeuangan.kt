@@ -1,10 +1,13 @@
 package com.example.tbimaan.coreui.screen.Keuangan
 
+import android.app.Activity
+import android.app.DatePickerDialog
 import android.content.Context
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.Image // Import tambahan
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,9 +16,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Inventory
-import androidx.compose.material.icons.outlined.Paid
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -24,22 +27,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.painterResource // Import tambahan
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
-import com.example.tbimaan.R
-import com.example.tbimaan.coreui.navigation.KEUANGAN_GRAPH_ROUTE
+import com.example.tbimaan.R // Import untuk mengakses R.drawable
+import com.example.tbimaan.coreui.components.BackButtonOnImage // Import tambahan
+import com.example.tbimaan.coreui.viewmodel.KeuanganViewModel
 import java.io.File
+import java.io.FileOutputStream
+import java.util.Calendar
 
 fun getTempUri(context: Context): Uri {
     val tempFile = File.createTempFile("temp_image_${System.currentTimeMillis()}", ".jpg", context.cacheDir).apply {
@@ -49,90 +52,196 @@ fun getTempUri(context: Context): Uri {
     return FileProvider.getUriForFile(context, "${context.packageName}.provider", tempFile)
 }
 
+fun uriToFile(context: Context, uri: Uri): File? {
+    return try {
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val file = File(context.cacheDir, "upload_${System.currentTimeMillis()}.jpg")
+        val outputStream = FileOutputStream(file)
+        inputStream?.copyTo(outputStream)
+        inputStream?.close()
+        outputStream.close()
+        file
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+// =======================================================================
+// === HeaderContent untuk Gambar Masjid dan Tombol Kembali ===
+// =======================================================================
+@Composable
+private fun HeaderContent(navController: NavController) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.masjid),
+            contentDescription = "Masjid Background",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        BackButtonOnImage(
+            onClick = { navController.navigateUp() },
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+    }
+}
+// =======================================================================
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateKeuanganScreen(
     navController: NavController,
-    onNavigate: (String) -> Unit,
-    onSave: () -> Unit
+    viewModel: KeuanganViewModel = viewModel()
 ) {
+    // --- States untuk Form ---
     var keterangan by remember { mutableStateOf("") }
     var jumlah by remember { mutableStateOf("") }
     var tanggal by remember { mutableStateOf("") }
     val options = listOf("Pemasukan", "Pengeluaran")
     var selectedTipe by remember { mutableStateOf(options[0]) }
     var isTipeExpanded by remember { mutableStateOf(false) }
-    val textColorPrimary = Color(0xFF1E5B8A)
+    var isLoading by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val activity = LocalContext.current as? Activity
+
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
-
-    // PERBAIKAN 1: Tambahkan tempUriHolder, sama seperti di CreateInventaris.kt
     var tempUriHolder by remember { mutableStateOf<Uri?>(null) }
 
+    // --- Image Pickers ---
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
-        onResult = { uri ->
-            if (uri != null) {
-                imageUri = uri
-            }
-        }
+        onResult = { uri -> if (uri != null) imageUri = uri }
     )
-
-    // PERBAIKAN 2: Perbarui onResult pada cameraLauncher
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
-        onResult = { success ->
-            if (success) {
-                imageUri = tempUriHolder // Set imageUri dari holder jika berhasil
-            }
-        }
+        onResult = { success -> if (success) imageUri = tempUriHolder }
     )
 
+    // ================= DatePicker: remembered and using Activity context if available =================
+    val datePickerDialog = remember {
+        val calendar = Calendar.getInstance()
+        DatePickerDialog(
+            activity ?: context,
+            { _, year, month, dayOfMonth ->
+                tanggal = "%04d-%02d-%02d".format(year, month + 1, dayOfMonth)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).apply {
+            setCancelable(true)
+            setCanceledOnTouchOutside(true)
+        }
+    }
+    // ================================================================================================
+
     Scaffold(
+        // === TopAppBar DIHAPUS agar gambar masjid bisa full-width dan judul diletakkan di bawahnya ===
+        // Kode asli TopAppBar yang dihapus:
+        /*
         topBar = {
             TopAppBar(
-                title = { /* Kosong */ },
+                title = { Text("Tambahkan Data Keuangan", fontWeight = FontWeight.Bold, color = Color(0xFF1E5B8A)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Kembali", tint = textColorPrimary)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
-        bottomBar = { KeuanganBottomAppBar(onNavigate = onNavigate, currentRoute = KEUANGAN_GRAPH_ROUTE) },
-        containerColor = Color.White
+        */
+        containerColor = Color(0xFFF8F9FA)
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.masjid),
-                contentDescription = "Header Masjid",
-                modifier = Modifier.fillMaxWidth().height(180.dp),
-                contentScale = ContentScale.Crop
-            )
-            Text(
-                text = "Tambahkan Data Keuangan Baru",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = textColorPrimary,
-                modifier = Modifier.padding(top = 24.dp).align(Alignment.CenterHorizontally)
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedTextField(value = keterangan, onValueChange = { keterangan = it }, label = { Text("Keterangan") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
-                OutlinedTextField(value = jumlah, onValueChange = { jumlah = it }, label = { Text("Jumlah (contoh: 50000)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
-                OutlinedTextField(value = tanggal, onValueChange = { tanggal = it }, label = { Text("Tanggal (DD/MM/YY)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
-                ExposedDropdownMenuBox(expanded = isTipeExpanded, onExpandedChange = { isTipeExpanded = !isTipeExpanded }, modifier = Modifier.fillMaxWidth()) {
+                // =====================================================
+                // === KODE BARU: Gambar Masjid (sebagai Header) ===
+                // =====================================================
+                HeaderContent(navController)
+
+                // =====================================================
+                // === KODE BARU: Judul di bawah Gambar Masjid ===
+                // =====================================================
+                Text(
+                    text = "Tambahkan Data Keuangan", // Mengganti teks dari TopAppBar yang dihapus
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E5B8A),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 16.dp, bottom = 8.dp)
+                )
+                // =====================================================
+
+
+                OutlinedTextField(
+                    value = keterangan,
+                    onValueChange = { keterangan = it },
+                    label = { Text("Keterangan") },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), // Menambahkan padding
+                    shape = RoundedCornerShape(16.dp)
+                )
+
+                OutlinedTextField(
+                    value = jumlah,
+                    onValueChange = { jumlah = it },
+                    label = { Text("Jumlah (contoh: 50000)") },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), // Menambahkan padding
+                    shape = RoundedCornerShape(16.dp)
+                )
+
+                // ============ Tanggal field (readOnly) ============
+                OutlinedTextField(
+                    value = tanggal,
+                    onValueChange = {},
+                    label = { Text("Tanggal (YYYY-MM-DD)") },
+                    readOnly = true,
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp) // Menambahkan padding
+                        .clickable {
+                            try {
+                                datePickerDialog.show()
+                            } catch (e: Exception) {
+                                // silent fail; Anda bisa log jika perlu
+                            }
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            try {
+                                datePickerDialog.show()
+                            } catch (e: Exception) {
+                                // ignore
+                            }
+                        }) {
+                            Icon(Icons.Default.DateRange, contentDescription = "Pilih Tanggal")
+                        }
+                    }
+                )
+                // =====================================================
+
+                ExposedDropdownMenuBox(
+                    expanded = isTipeExpanded,
+                    onExpandedChange = { isTipeExpanded = !isTipeExpanded },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp) // Menambahkan padding
+                ) {
                     OutlinedTextField(
                         value = selectedTipe,
                         onValueChange = {},
@@ -148,10 +257,12 @@ fun CreateKeuanganScreen(
                         }
                     }
                 }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(180.dp)
+                        .padding(horizontal = 24.dp) // Menambahkan padding
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFFF0F5F9))
                         .border(1.dp, Color(0xFFDDEEFF), RoundedCornerShape(16.dp))
@@ -160,33 +271,73 @@ fun CreateKeuanganScreen(
                 ) {
                     if (imageUri == null) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = "Upload Icon", tint = textColorPrimary.copy(alpha = 0.8f), modifier = Modifier.size(40.dp))
+                            Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = "Upload Icon", tint = Color(0xFF1E5B8A).copy(alpha = 0.8f), modifier = Modifier.size(40.dp))
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = "Upload Bukti", color = textColorPrimary, fontWeight = FontWeight.SemiBold)
+                            Text(text = "Upload Bukti", color = Color(0xFF1E5B8A), fontWeight = FontWeight.SemiBold)
                         }
                     } else {
-                        AsyncImage(
-                            model = imageUri,
-                            contentDescription = "Bukti Terpilih",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                        AsyncImage(model = imageUri, contentDescription = "Bukti Terpilih", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     }
                 }
-                Spacer(modifier = Modifier.weight(1f, fill = false))
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Button(
-                    onClick = onSave,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    onClick = {
+                        val buktiUri = imageUri
+                        if (keterangan.isBlank() || jumlah.isBlank() || tanggal.isBlank() || buktiUri == null) {
+                            Toast.makeText(context, "Semua field dan foto bukti wajib diisi", Toast.LENGTH_LONG).show()
+                            return@Button
+                        }
+                        val file = uriToFile(context, buktiUri)
+                        if (file == null) {
+                            Toast.makeText(context, "Gagal memproses file gambar", Toast.LENGTH_LONG).show()
+                            return@Button
+                        }
+
+                        isLoading = true
+
+                        viewModel.createKeuangan(
+                            idUser = "1", // Ganti dengan ID user yang sedang login nanti
+                            keterangan = keterangan,
+                            tipeTransaksi = selectedTipe,
+                            tanggal = tanggal,
+                            jumlah = jumlah,
+                            buktiFile = file,
+                            onResult = { isSuccess, message ->
+                                isLoading = false
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                if (isSuccess) {
+                                    navController.popBackStack()
+                                }
+                            }
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp) // Menambahkan padding
+                        .height(56.dp),
                     shape = RoundedCornerShape(50),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5BC0DE))
                 ) {
                     Text("SIMPAN", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .clickable(enabled = false) {},
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color.White)
+                }
             }
         }
     }
 
-    // PERBAIKAN 3: Perbarui logika AlertDialog agar sama
     if (showImageSourceDialog) {
         AlertDialog(
             onDismissRequest = { showImageSourceDialog = false },
@@ -195,9 +346,9 @@ fun CreateKeuanganScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showImageSourceDialog = false
-                    val tempUri = getTempUri(context)
-                    tempUriHolder = tempUri // Simpan URI ke holder
-                    cameraLauncher.launch(tempUri) // Berikan URI ke kamera
+                    val uri = getTempUri(context)
+                    tempUriHolder = uri
+                    cameraLauncher.launch(uri)
                 }) { Text("Kamera") }
             },
             dismissButton = {
@@ -208,42 +359,4 @@ fun CreateKeuanganScreen(
             }
         )
     }
-}
-
-// ... Sisa file (BottomAppBar, Preview) tidak ada perubahan
-
-@Composable
-private fun KeuanganBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
-    Surface(shadowElevation = 8.dp, color = Color(0xFFF8F8F8)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BottomNavItem(label = "Home", icon = Icons.Default.Home, isSelected = false, onClick = { onNavigate("home") })
-            BottomNavItem(label = "Inventaris", icon = Icons.Outlined.Inventory, isSelected = false, onClick = { onNavigate("inventaris_graph") })
-            BottomNavItem(label = "Kegiatan", icon = Icons.Default.List, isSelected = false, onClick = { onNavigate("kegiatan_graph") })
-            BottomNavItem(label = "Keuangan", icon = Icons.Outlined.Paid, isSelected = true, onClick = { /* Sedang di sini */ })
-        }
-    }
-}
-
-@Composable
-private fun RowScope.BottomNavItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
-    val contentColor = if (isSelected) Color(0xFF1E5B8A) else Color.Gray
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier.weight(1f).height(64.dp).clickable(onClick = onClick)
-    ) {
-        Icon(imageVector = icon, contentDescription = label, tint = contentColor)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, color = contentColor, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, textAlign = TextAlign.Center)
-    }
-}
-
-@Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
-@Composable
-fun CreateKeuanganScreenPreview() {
-    CreateKeuanganScreen(navController = rememberNavController(), onNavigate = {}, onSave = {})
 }
