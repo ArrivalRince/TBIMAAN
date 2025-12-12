@@ -18,6 +18,11 @@ import com.example.tbimaan.coreui.screen.Home.SignUpScreen
 import com.example.tbimaan.coreui.viewmodel.InventarisViewModel // <-- IMPORT ViewModel Inventaris
 import com.example.tbimaan.coreui.viewmodel.KeuanganViewModel     // <-- IMPORT ViewModel Keuangan
 
+const val HOME_GRAPH_ROUTE = "home"
+const val INVENTARIS_GRAPH_ROUTE = "inventaris_graph"
+const val KEUANGAN_GRAPH_ROUTE = "keuangan_graph"
+const val KEGIATAN_GRAPH_ROUTE = "kegiatan_graph"
+
 
 @Composable
 fun AppNavigation() {

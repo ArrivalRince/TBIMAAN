@@ -10,7 +10,6 @@ import com.example.tbimaan.coreui.screen.Kegiatan.CreateKegiatanScreen
 import com.example.tbimaan.coreui.screen.Kegiatan.ReadKegiatanScreen
 import com.example.tbimaan.coreui.screen.Kegiatan.UpdateKegiatanScreen
 
-const val KEGIATAN_GRAPH_ROUTE = "kegiatan_graph"
 
 fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
     navigation(

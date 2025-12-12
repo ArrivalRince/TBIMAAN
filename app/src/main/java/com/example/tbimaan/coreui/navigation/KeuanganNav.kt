@@ -11,7 +11,7 @@ import com.example.tbimaan.coreui.screen.Keuangan.CreateKeuanganScreen
 import com.example.tbimaan.coreui.screen.Keuangan.ReadKeuanganScreen
 import com.example.tbimaan.coreui.screen.Keuangan.UpdateKeuanganScreen
 
-const val KEUANGAN_GRAPH_ROUTE = "keuangan_graph"
+
 
 /**
  * Fungsi ini hanya mendefinisikan rute navigasi untuk modul Keuangan.

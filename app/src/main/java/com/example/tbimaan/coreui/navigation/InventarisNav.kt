@@ -11,7 +11,7 @@ import com.example.tbimaan.coreui.screen.Inventaris.ReadInventarisScreen
 import com.example.tbimaan.coreui.screen.Inventaris.UpdateInventarisScreen
 import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
 
-const val INVENTARIS_GRAPH_ROUTE = "inventaris_graph"
+
 
 // File ini sudah benar, asalkan screen-screen yang dipanggilnya juga sudah benar.
 fun NavGraphBuilder.inventarisNavGraph(navController: NavController, viewModel: InventarisViewModel) {

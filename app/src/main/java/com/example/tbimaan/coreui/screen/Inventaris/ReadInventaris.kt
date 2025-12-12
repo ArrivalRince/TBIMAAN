@@ -3,19 +3,13 @@ package com.example.tbimaan.coreui.screen.Inventaris
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.items // PERBAIKAN: Gunakan 'items' untuk performa lebih baik
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Home // Import tambahan
-import androidx.compose.material.icons.filled.List // Import tambahan
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material3.*
@@ -32,50 +26,247 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp // Import tambahan untuk BottomNavItem
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.tbimaan.R
 import com.example.tbimaan.coreui.components.BackButtonOnImage
+import com.example.tbimaan.coreui.navigation.HOME_GRAPH_ROUTE // PERBAIKAN: Import yang benar
 import com.example.tbimaan.coreui.navigation.INVENTARIS_GRAPH_ROUTE
+import com.example.tbimaan.coreui.navigation.KEGIATAN_GRAPH_ROUTE
 import com.example.tbimaan.coreui.navigation.KEUANGAN_GRAPH_ROUTE
+// PERBAIKAN: Import InventarisViewModel dan data class InventarisEntry yang BENAR dari ViewModel
 import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
+import com.example.tbimaan.coreui.viewmodel.InventarisEntry
 
+// =====================================================================
+// ===        PERBAIKAN UTAMA: HAPUS DATA CLASS LOKAL INI          ===
+// =====================================================================
+// Definisi data class lokal yang menyebabkan masalah sudah dihapus dari sini.
+// Kita sekarang menggunakan 'InventarisEntry' yang diimpor dari ViewModel.
+// =====================================================================
 
-data class InventarisEntry(
-    val id: String,
-    val namaBarang: String,
-    val kondisi: String,
-    val jumlah: String,
-    val tanggal: String,
-    val urlFoto: String
-)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReadInventarisScreen(
+    navController: NavController,
+    viewModel: InventarisViewModel = viewModel()
+) {
+    val context = LocalContext.current
+    val inventarisList by viewModel.inventarisList
+    val isLoading by viewModel.isLoading
+    val errorMessage by viewModel.errorMessage
 
-// --- Composable Navigasi Baru yang Disalin dari ReadKeuanganScreen ---
+    var itemToDelete by remember { mutableStateOf<InventarisEntry?>(null) }
+    var itemToShowProof by remember { mutableStateOf<InventarisEntry?>(null) }
+
+    // Memuat data saat screen pertama kali dibuka atau saat kembali ke screen ini
+    LaunchedEffect(Unit) {
+        viewModel.loadInventaris()
+    }
+
+    // Menampilkan pesan error dari ViewModel
+    LaunchedEffect(errorMessage) {
+        if (errorMessage.isNotEmpty()) {
+            Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate("create_inventaris") },
+                containerColor = Color(0xFF004AAD),
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp)
+            ) { Icon(Icons.Default.Add, "Tambah") }
+        },
+        bottomBar = {
+            // Menggunakan Bottom Nav Bar yang konsisten
+            ConsistentBottomNavBar(
+                navController = navController,
+                currentRoute = INVENTARIS_GRAPH_ROUTE
+            )
+        }
+    ) { innerPadding ->
+        // Tampilkan loading indicator di tengah jika list masih kosong
+        if (isLoading && inventarisList.isEmpty()) {
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            // Tampilkan list data jika sudah ada atau loading selesai
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding) // Gunakan padding dari Scaffold
+            ) {
+                item { HeaderContent(navController) }
+                item { SectionTitle("Data Inventaris Masjid") }
+
+                // PERBAIKAN: Gunakan `items` untuk efisiensi LazyColumn
+                items(inventarisList, key = { it.id }) { item ->
+                    InventarisCard(
+                        item = item,
+                        onEditClick = { navController.navigate("update_inventaris/${item.id}") },
+                        onDeleteClick = { itemToDelete = item },
+                        onShowProofClick = { itemToShowProof = item }
+                    )
+                }
+
+                item { Spacer(Modifier.height(80.dp)) } // Spacer di akhir list
+            }
+        }
+    }
+
+    // Dialog konfirmasi hapus
+    itemToDelete?.let { item ->
+        DeleteConfirmationDialog(
+            itemName = item.namaBarang,
+            onConfirm = {
+                viewModel.deleteInventaris(item.id) { _, _ -> }
+                itemToDelete = null
+            },
+            onDismiss = { itemToDelete = null }
+        )
+    }
+
+    // Dialog untuk menampilkan gambar
+    itemToShowProof?.let { item ->
+        ProofImageDialog(
+            imageUrl = item.urlFoto,
+            onDismiss = { itemToShowProof = null }
+        )
+    }
+}
+
+// ----------------------
+// HELPER COMPOSABLES (Kode yang lain tidak dihapus)
+// ----------------------
 
 @Composable
-fun KeuanganBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
-    Surface(shadowElevation = 8.dp, color = Color.White) {
+fun InventarisCard(
+    item: InventarisEntry,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onShowProofClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        colors = CardDefaults.cardColors(Color.White),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+            Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BottomNavItem(label = "Home", icon = Icons.Default.Home, isSelected = false, onClick = { onNavigate("home") })
-            BottomNavItem(label = "Inventaris", icon = Icons.Outlined.Inventory, isSelected = currentRoute == INVENTARIS_GRAPH_ROUTE, onClick = { onNavigate(INVENTARIS_GRAPH_ROUTE) })
-            BottomNavItem(label = "Kegiatan", icon = Icons.Default.List, isSelected = false, onClick = { onNavigate("kegiatan_graph") })
-            BottomNavItem(label = "Keuangan", icon = Icons.Outlined.Paid, isSelected = currentRoute == KEUANGAN_GRAPH_ROUTE, onClick = { onNavigate(KEUANGAN_GRAPH_ROUTE) })
+            // Composable untuk menampilkan gambar
+            AsyncImage(
+                model = item.urlFoto, // <-- Ini sekarang adalah URL LENGKAP dari ViewModel
+                contentDescription = "Foto ${item.namaBarang}",
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.LightGray) // Latar belakang jika gambar sedang loading
+                    .clickable { onShowProofClick() },
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(id = R.drawable.logo_imaan), // Gambar saat loading
+                error = painterResource(id = R.drawable.logo_imaan) // Gambar jika terjadi error
+            )
+
+            Spacer(Modifier.width(16.dp))
+
+            // Kolom untuk teks
+            Column(Modifier.weight(1f)) {
+                Text(item.namaBarang, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1E5B8A))
+                Text("Jumlah: ${item.jumlah}", color = Color.Gray)
+                Text(item.tanggal, color = Color.Gray, fontSize = 12.sp)
+            }
+
+            // Tombol Aksi
+            IconButton(onClick = onEditClick) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color(0xFFFFA000))
+            }
+            IconButton(onClick = onDeleteClick) {
+                Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red)
+            }
         }
     }
 }
 
 @Composable
-private fun RowScope.BottomNavItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
+fun HeaderContent(navController: NavController) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+    ) {
+        Image(
+            painter = painterResource(R.drawable.masjid),
+            contentDescription = "Header",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        BackButtonOnImage(
+            onClick = { navController.navigate(HOME_GRAPH_ROUTE) { popUpTo(0) } },
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+    }
+}
+
+@Composable
+fun SectionTitle(title: String) {
+    Text(
+        text = title,
+        modifier = Modifier.padding(16.dp),
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        color = Color(0xFF1E5B8A)
+    )
+}
+
+@Composable
+fun ConsistentBottomNavBar(navController: NavController, currentRoute: String?) {
+    Surface(modifier = Modifier.fillMaxWidth(), shadowElevation = 8.dp, color = Color.White) {
+        Row(
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val navItems = listOf(
+                "Home" to HOME_GRAPH_ROUTE,
+                "Inventaris" to INVENTARIS_GRAPH_ROUTE,
+                "Kegiatan" to KEGIATAN_GRAPH_ROUTE,
+                "Keuangan" to KEUANGAN_GRAPH_ROUTE
+            )
+            navItems.forEach { (label, route) ->
+                BottomNavBarItem(
+                    label = label,
+                    icon = when (route) {
+                        HOME_GRAPH_ROUTE -> Icons.Default.Home
+                        INVENTARIS_GRAPH_ROUTE -> Icons.Outlined.Inventory
+                        KEGIATAN_GRAPH_ROUTE -> Icons.Default.List
+                        else -> Icons.Outlined.Paid
+                    },
+                    isSelected = currentRoute == route,
+                    onClick = {
+                        if (currentRoute != route) {
+                            navController.navigate(route) { popUpTo(navController.graph.startDestinationId) }
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RowScope.BottomNavBarItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
     val contentColor = if (isSelected) Color(0xFF1E5B8A) else Color.Gray
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -88,192 +279,40 @@ private fun RowScope.BottomNavItem(label: String, icon: ImageVector, isSelected:
     }
 }
 
-
-// --- Hapus/Nonaktifkan InventarisBottomAppBar lama ---
-// @Composable
-// private fun InventarisBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
-//     /* ... (kode bottom app bar lama) ... */
-// }
-// @Composable
-// private fun RowScope.BottomNavItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
-//     /* ... (kode bottom nav item lama) ... */
-// }
-
-
-// --- HeaderContent (sudah benar) ---
 @Composable
-private fun HeaderContent(navController: NavController) {
-    Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
-        Image(
-            painter = painterResource(id = R.drawable.masjid),
-            contentDescription = "Masjid Header",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-        // Mengubah navigateUp() ke "home" untuk konsistensi dengan KeuanganBottomAppBar
-        BackButtonOnImage(onClick = { navController.navigate("home") { popUpTo(0) } }, modifier = Modifier.align(Alignment.TopStart))
-    }
-}
-
-// --- SectionTitle (sudah benar) ---
-@Composable
-fun SectionTitle(title: String, color: Color) {
-    Text(
-        text = title,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        color = color
+fun DeleteConfirmationDialog(itemName: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Konfirmasi Hapus") },
+        text = { Text("Yakin ingin menghapus \"$itemName\"?") },
+        confirmButton = {
+            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(Color.Red)) {
+                Text("Hapus")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text("Batal") }
+        }
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReadInventarisScreen(
-    navController: NavController,
-    viewModel: InventarisViewModel = viewModel()
-) {
-    val context = LocalContext.current
-    val inventarisList by viewModel.inventarisList
-    val isLoading by viewModel.isLoading
-    val errorMessage by viewModel.errorMessage
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var itemToDelete by remember { mutableStateOf<InventarisEntry?>(null) }
-    var itemToShowProof by remember { mutableStateOf<InventarisEntry?>(null) }
-
-    LaunchedEffect(key1 = Unit) { viewModel.loadInventaris() }
-    LaunchedEffect(errorMessage) { if (errorMessage.isNotEmpty()) Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show() }
-
-    Box(Modifier.fillMaxSize()) {
-        Scaffold(
-            floatingActionButton = {
-                FloatingActionButton(onClick = { navController.navigate("create_inventaris") }, containerColor = Color(0xFF004AAD), contentColor = Color.White, shape = RoundedCornerShape(16.dp)) {
-                    Icon(Icons.Default.Add, "Tambah")
-                }
-            },
-            bottomBar = {
-                // =======================================================================
-                // === PENGGANTIAN: Menggunakan KeuanganBottomAppBar yang baru/lengkap ===
-                // =======================================================================
-                KeuanganBottomAppBar(
-                    onNavigate = { route ->
-                        navController.navigate(route) {
-                            popUpTo(navController.graph.startDestinationId)
-                            launchSingleTop = true
-                        }
-                    },
-                    currentRoute = INVENTARIS_GRAPH_ROUTE // Menandakan kita di modul Inventaris
-                )
-                // =======================================================================
-            }
-        ) { innerPadding ->
-            if (isLoading && inventarisList.isEmpty()) {
-                Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
-            } else {
-                LazyColumn(Modifier.fillMaxSize().padding(bottom = innerPadding.calculateBottomPadding())) {
-                    item { HeaderContent(navController) }
-                    item {
-                        SectionTitle("Data Inventaris Masjid", Color(0xFF1E5B8A))
-                        InventarisTable(
-                            data = inventarisList,
-                            onEditClick = { id -> navController.navigate("update_inventaris/$id") },
-                            onDeleteClick = { item -> itemToDelete = item; showDeleteDialog = true },
-                            onShowProofClick = { item ->
-                                if (item.urlFoto.isNotBlank()) {
-                                    itemToShowProof = item
-                                } else {
-                                    Toast.makeText(context, "Tidak ada foto", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        )
-                    }
-                    item { Spacer(Modifier.height(80.dp)) }
-                }
-            }
-        }
-
-        // Loading Overlay
-        if (isLoading && inventarisList.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(0.3f))
-                    .clickable(enabled = false, onClick = {}),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = Color.White)
-            }
-        }
-    }
-
-    if (showDeleteDialog) {
-        DeleteConfirmationDialog(
-            itemName = itemToDelete?.namaBarang ?: "",
-            onConfirm = { itemToDelete?.let { viewModel.deleteInventaris(it.id) { _, _ -> } }; showDeleteDialog = false },
-            onDismiss = { showDeleteDialog = false }
-        )
-    }
-
-    itemToShowProof?.let {
-        ProofImageDialog(
-            imageUrl = it.urlFoto,
-            onDismiss = { itemToShowProof = null }
-        )
-    }
-}
-
-// --- Composable lainnya (tetap dipertahankan) ---
-@Composable fun InventarisTable(data: List<InventarisEntry>, onEditClick: (String) -> Unit, onDeleteClick: (InventarisEntry) -> Unit, onShowProofClick: (InventarisEntry) -> Unit) { /* ... kode sama ... */
-    if (data.isEmpty()) { Text("Tidak ada data inventaris.", Modifier.fillMaxWidth().padding(24.dp), textAlign = TextAlign.Center, color = Color.Gray); return }
-    Box(Modifier.padding(horizontal = 16.dp)) {
-        Box(Modifier.border(1.dp, Color(0xFFB0D4E2), RoundedCornerShape(8.dp)).horizontalScroll(rememberScrollState())) {
-            Column(Modifier.width(700.dp)) {
-                Row(Modifier.background(Color(0xFFCDEEFE)).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    TableCell("No", 0.5f, title = true); TableCell("Nama Barang", 2f, title = true); TableCell("Jumlah", 1f, title = true); TableCell("Kondisi", 1.5f, title = true); TableCell("Tanggal Masuk", 1.5f, title = true); TableCell("Foto", 1f, title = true); TableCell("Aksi", 1.5f, title = true)
-                }
-                data.forEachIndexed { index, item ->
-                    Row(Modifier.background(if (index % 2 == 0) Color.White else Color(0xFFF8FBFF)), verticalAlignment = Alignment.CenterVertically) {
-                        TableCell((index + 1).toString(), 0.5f); TableCell(item.namaBarang, 2f); TableCell(item.jumlah, 1f); TableCell(item.kondisi, 1.5f); TableCell(item.tanggal, 1.5f); TableCellClickable("Lihat Foto", 1f) { onShowProofClick(item) }
-                        Row(Modifier.weight(1.5f).padding(4.dp), Arrangement.Center, Alignment.CenterVertically) {
-                            IconButton({ onEditClick(item.id) }, Modifier.size(36.dp)) { Icon(Icons.Default.Edit, "Edit", tint = Color(0xFFFFA000)) }
-                            IconButton({ onDeleteClick(item) }, Modifier.size(36.dp)) { Icon(Icons.Default.Delete, "Hapus", tint = Color.Red) }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-@Composable fun RowScope.TableCell(text: String, weight: Float, alignment: TextAlign = TextAlign.Center, title: Boolean = false) { /* ... kode sama ... */
-    Text(text, Modifier.weight(weight).padding(8.dp, 12.dp), fontWeight = if (title) FontWeight.Bold else FontWeight.Normal, textAlign = alignment, overflow = TextOverflow.Ellipsis, maxLines = 1)
-}
-@Composable
-fun RowScope.TableCellClickable(text: String, weight: Float, onClick: () -> Unit) {
-    Text(
-        text = text,
-        modifier = Modifier
-            .weight(weight)
-            .clickable { onClick() }
-            .padding(8.dp, 12.dp),
-        textAlign = TextAlign.Center,
-        color = Color(0xFF004AAD),
-        textDecoration = TextDecoration.Underline
-    )
-}
-@Composable fun DeleteConfirmationDialog(itemName: String, onConfirm: () -> Unit, onDismiss: () -> Unit) { /* ... kode sama ... */
-    AlertDialog(onDismiss, title = { Text("Konfirmasi Hapus") }, text = { Text("Yakin ingin menghapus \"$itemName\"?") }, confirmButton = { Button({ onConfirm() }, colors = ButtonDefaults.buttonColors(Color.Red)) { Text("Hapus") } }, dismissButton = { OutlinedButton({ onDismiss() }) { Text("Batal") } })
-}
-@Composable fun ProofImageDialog(imageUrl: String, onDismiss: () -> Unit) {
+fun ProofImageDialog(imageUrl: String, onDismiss: () -> Unit) {
     Dialog(onDismiss) {
-        Box(Modifier.fillMaxWidth(0.95f).wrapContentHeight().clip(RoundedCornerShape(16.dp)).background(Color.White)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .wrapContentHeight()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+        ) {
             AsyncImage(
                 model = imageUrl,
                 contentDescription = "Foto Bukti",
                 modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_launcher_background)
+                contentScale = ContentScale.Fit,
+                placeholder = painterResource(R.drawable.logo_imaan),
+                error = painterResource(R.drawable.logo_imaan)
             )
         }
     }
