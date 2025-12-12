@@ -9,16 +9,35 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,10 +54,20 @@ import com.example.tbimaan.R
 import com.example.tbimaan.coreui.components.BackButtonOnImage
 import com.example.tbimaan.coreui.components.PrimaryButton
 import com.example.tbimaan.coreui.components.SecondaryButton
-import com.example.tbimaan.coreui.screen.Keuangan.uriToFile // Menggunakan kembali helper
-import com.example.tbimaan.coreui.screen.Keuangan.getTempUri // Menggunakan kembali helper
-import com.example.tbimaan.coreui.viewmodel.InventarisViewModel // <-- IMPORT PENTING
+import com.example.tbimaan.coreui.utils.getTempUri
+import com.example.tbimaan.coreui.utils.uriToFile
+import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
 import java.util.Calendar
+
+
+data class InventarisEntry(
+    val id: String,
+    val namaBarang: String,
+    val kondisi: String,
+    val jumlah: String,
+    val tanggal: String,
+    val urlFoto: String // Properti ini akan berisi URL LENGKAP
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,8 +87,14 @@ fun CreateInventarisScreen(
     var tempUriHolder by remember { mutableStateOf<Uri?>(null) }
     var isLoading by remember { mutableStateOf(false) }
 
-    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) imageUri = uri }
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success -> if (success) imageUri = tempUriHolder }
+    val galleryLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) imageUri = uri
+        }
+    val cameraLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success) imageUri = tempUriHolder
+        }
 
     val datePickerDialog = remember {
         val calendar = Calendar.getInstance()
@@ -68,7 +103,9 @@ fun CreateInventarisScreen(
             { _, year, month, dayOfMonth ->
                 tanggal = "%04d-%02d-%02d".format(year, month + 1, dayOfMonth)
             },
-            calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
         )
     }
 
@@ -86,45 +123,100 @@ fun CreateInventarisScreen(
                 Box(
                     modifier = Modifier.fillMaxWidth().height(180.dp)
                 ) {
-                    Image(painter = painterResource(id = R.drawable.masjid), contentDescription = "Header", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    BackButtonOnImage(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.TopStart))
+                    Image(
+                        painter = painterResource(id = R.drawable.masjid),
+                        contentDescription = "Header",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    BackButtonOnImage(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier.align(Alignment.TopStart)
+                    )
                 }
 
                 // Judul
                 Text(
                     text = "Tambahkan Data Inventaris Baru",
-                    style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = textColorPrimary,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = textColorPrimary,
                     modifier = Modifier.padding(top = 24.dp).align(Alignment.CenterHorizontally)
                 )
 
                 // Form Fields
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp),
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    OutlinedTextField(value = namaBarang, onValueChange = { namaBarang = it }, label = { Text("Nama Barang") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
-                    OutlinedTextField(value = jumlahBarang, onValueChange = { jumlahBarang = it }, label = { Text("Jumlah Barang") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
-                    OutlinedTextField(value = kondisi, onValueChange = { kondisi = it }, label = { Text("Kondisi (contoh: Baik, Rusak)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
                     OutlinedTextField(
-                        value = tanggal, onValueChange = {}, label = { Text("Tanggal Pembelian (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() },
-                        readOnly = true, shape = RoundedCornerShape(16.dp),
-                        trailingIcon = { Icon(Icons.Default.DateRange, "Pilih Tanggal", modifier = Modifier.clickable { datePickerDialog.show() }) }
+                        value = namaBarang,
+                        onValueChange = { namaBarang = it },
+                        label = { Text("Nama Barang") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    OutlinedTextField(
+                        value = jumlahBarang,
+                        onValueChange = { jumlahBarang = it },
+                        label = { Text("Jumlah Barang") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    OutlinedTextField(
+                        value = kondisi,
+                        onValueChange = { kondisi = it },
+                        label = { Text("Kondisi (contoh: Baik, Rusak)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    OutlinedTextField(
+                        value = tanggal,
+                        onValueChange = {},
+                        label = { Text("Tanggal Pembelian (YYYY-MM-DD)") },
+                        modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() },
+                        readOnly = true,
+                        shape = RoundedCornerShape(16.dp),
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.DateRange,
+                                "Pilih Tanggal",
+                                modifier = Modifier.clickable { datePickerDialog.show() })
+                        }
                     )
 
                     // Upload Foto
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF0F5F9)).border(1.dp, Color(0xFFDDEEFF), RoundedCornerShape(16.dp)).clickable { showImageSourceDialog = true },
+                        modifier = Modifier.fillMaxWidth().height(180.dp)
+                            .clip(RoundedCornerShape(16.dp)).background(Color(0xFFF0F5F9))
+                            .border(1.dp, Color(0xFFDDEEFF), RoundedCornerShape(16.dp))
+                            .clickable { showImageSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
                         if (imageUri == null) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(imageVector = Icons.Default.AddPhotoAlternate, "Upload", tint = textColorPrimary.copy(alpha = 0.8f), modifier = Modifier.size(40.dp))
+                                Icon(
+                                    imageVector = Icons.Default.AddPhotoAlternate,
+                                    "Upload",
+                                    tint = textColorPrimary.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(40.dp)
+                                )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("Upload Foto", color = textColorPrimary, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "Upload Foto",
+                                    color = textColorPrimary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         } else {
-                            AsyncImage(model = imageUri, "Foto Barang", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            AsyncImage(
+                                model = imageUri,
+                                "Foto Barang",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
                         }
                     }
                 }
@@ -133,10 +225,15 @@ fun CreateInventarisScreen(
 
                 // Tombol Aksi
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    SecondaryButton(text = "Batal", onClick = { navController.popBackStack() }, modifier = Modifier.weight(1f))
+                    SecondaryButton(
+                        text = "Batal",
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier.weight(1f)
+                    )
 
                     // ==========================================================
                     // ===            PERBAIKAN UTAMA ADA DI SINI             ===
@@ -144,52 +241,86 @@ fun CreateInventarisScreen(
                     PrimaryButton(
                         text = "Simpan",
                         onClick = {
-                            val file = imageUri?.let { uriToFile(context, it) }
-                            if (namaBarang.isBlank() || jumlahBarang.isBlank() || tanggal.isBlank() || file == null) {
-                                Toast.makeText(context, "Semua kolom dan foto wajib diisi", Toast.LENGTH_SHORT).show()
-                            } else {
-                                isLoading = true
-                                // Panggil ViewModel untuk menyimpan data
-                                viewModel.createInventaris(
-                                    idUser = "1", // Ganti dengan ID user yang sedang login
-                                    namaBarang = namaBarang,
-                                    kondisi = kondisi.ifBlank { "Baik" },
-                                    jumlah = jumlahBarang,
-                                    tanggal = tanggal,
-                                    fotoFile = file,
-                                    onResult = { isSuccess, message ->
-                                        isLoading = false
-                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                        if (isSuccess) {
-                                            navController.popBackStack() // Kembali jika sukses
-                                        }
-                                    }
-                                )
+                            val file = try {
+                                imageUri?.let { uriToFile(context, it) }
+                            } catch (e: Exception) {
+                                null
                             }
+
+                            if (namaBarang.isBlank() || jumlahBarang.isBlank() || tanggal.isBlank()) {
+                                Toast.makeText(
+                                    context,
+                                    "Semua kolom wajib diisi",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@PrimaryButton
+                            }
+
+                            if (file == null || !file.exists() || file.length() == 0L) {
+                                Toast.makeText(
+                                    context,
+                                    "Foto gagal diproses / tidak valid",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@PrimaryButton
+                            }
+
+                            isLoading = true
+
+                            viewModel.createInventaris(
+                                idUser = "1",
+                                namaBarang = namaBarang,
+                                kondisi = kondisi.ifBlank { "Baik" },
+                                jumlah = jumlahBarang,
+                                tanggal = tanggal,
+                                fotoFile = file,
+                                onResult = { isSuccess, message ->
+                                    isLoading = false
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    if (isSuccess) {
+                                        navController.popBackStack()
+                                    }
+                                }
+                            )
                         },
                         modifier = Modifier.weight(1f)
                     )
-                    // ==========================================================
+
+
+                    // --- UI Loading ---
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.5f))
+                                .clickable(enabled = false, onClick = {}),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Color.White)
+                        }
+                    }
                 }
             }
 
-            // --- UI Loading ---
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).clickable(enabled = false, onClick = {}), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color.White)
-                }
+            // Dialog pilihan sumber gambar
+            if (showImageSourceDialog) {
+                AlertDialog(
+                    onDismissRequest = { showImageSourceDialog = false },
+                    title = { Text("Pilih Sumber Foto") },
+                    text = { Text("Pilih dari Galeri atau ambil foto baru?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showImageSourceDialog = false;
+                            val tempUri = getTempUri(context); tempUriHolder =
+                            tempUri; cameraLauncher.launch(tempUri)
+                        }) { Text("Kamera") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            showImageSourceDialog = false; galleryLauncher.launch("image/*")
+                        }) { Text("Galeri") }
+                    }
+                )
             }
         }
-    }
-
-    // Dialog pilihan sumber gambar
-    if (showImageSourceDialog) {
-        AlertDialog(
-            onDismissRequest = { showImageSourceDialog = false },
-            title = { Text("Pilih Sumber Foto") },
-            text = { Text("Pilih dari Galeri atau ambil foto baru?") },
-            confirmButton = { TextButton(onClick = { showImageSourceDialog = false; val tempUri = getTempUri(context); tempUriHolder = tempUri; cameraLauncher.launch(tempUri) }) { Text("Kamera") } },
-            dismissButton = { TextButton(onClick = { showImageSourceDialog = false; galleryLauncher.launch("image/*") }) { Text("Galeri") } }
-        )
     }
 }

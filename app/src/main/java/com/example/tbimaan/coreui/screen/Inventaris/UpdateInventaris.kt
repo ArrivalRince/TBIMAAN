@@ -9,7 +9,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,10 +23,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,15 +48,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.tbimaan.R
 import com.example.tbimaan.coreui.components.BackButtonOnImage
-import com.example.tbimaan.coreui.screen.Keuangan.uriToFile
-import com.example.tbimaan.coreui.screen.Keuangan.getTempUri
+import com.example.tbimaan.coreui.components.PrimaryButton
+import com.example.tbimaan.coreui.utils.getTempUri
+import com.example.tbimaan.coreui.utils.uriToFile
 import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -50,31 +68,29 @@ import java.util.Locale
 fun UpdateInventarisScreen(
     navController: NavController,
     id: String,
-    viewModel: InventarisViewModel // <-- PERBAIKAN: Terima ViewModel
+    viewModel: InventarisViewModel
 ) {
     val context = LocalContext.current
     val item by viewModel.selectedItem
     val isLoadingInitialData by viewModel.isLoading
 
-    // --- FORM STATES ---
     var namaBarang by remember { mutableStateOf("") }
     var jumlahBarang by remember { mutableStateOf("") }
     var kondisi by remember { mutableStateOf("") }
-    var tanggal by remember { mutableStateOf("") } // YYYY-MM-DD
+    var tanggal by remember { mutableStateOf("") }
     var existingImageUrl by remember { mutableStateOf<String?>(null) }
     var newImageUri by remember { mutableStateOf<Uri?>(null) }
 
     var isProcessing by remember { mutableStateOf(false) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var tempUriHolder by remember { mutableStateOf<Uri?>(null) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Ambil data dari server sekali saat screen dibuka
+    // Ambil data dari server saat screen dibuka
     LaunchedEffect(key1 = id) {
         viewModel.getInventarisById(id)
     }
 
-    // Isi form setelah data berhasil dimuat
+    // Isi form ketika data berhasil dimuat
     LaunchedEffect(key1 = item) {
         item?.let { loadedItem ->
             namaBarang = loadedItem.namaBarang
@@ -92,35 +108,89 @@ fun UpdateInventarisScreen(
 
     DisposableEffect(Unit) { onDispose { viewModel.clearSelectedItem() } }
 
-    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) newImageUri = uri }
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success -> if (success) newImageUri = tempUriHolder }
+    val galleryLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) newImageUri = uri
+        }
+
+    val cameraLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success) newImageUri = tempUriHolder
+        }
 
     val datePickerDialog = remember {
         val calendar = Calendar.getInstance()
-        DatePickerDialog(context, { _, y, m, d -> tanggal = "%04d-%02d-%02d".format(y, m + 1, d) }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
+        DatePickerDialog(
+            context,
+            { _, y, m, d -> tanggal = "%04d-%02d-%02d".format(y, m + 1, d) },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
     }
 
-    Scaffold(
-        containerColor = Color(0xFFF9F9F9)
-    ) { innerPadding ->
-        if (isLoadingInitialData && item == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        } else {
-            Box(Modifier.fillMaxSize()) {
-                Column(Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState())) {
+    Scaffold(containerColor = Color.White) { innerPadding ->
+        Box(Modifier.fillMaxSize()) {
+            if (isLoadingInitialData && item == null) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // Header
                     Box(Modifier.fillMaxWidth().height(180.dp)) {
-                        Image(painterResource(R.drawable.masjid), "Header", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        BackButtonOnImage({ navController.popBackStack() }, Modifier.align(Alignment.TopStart))
+                        Image(
+                            painter = painterResource(R.drawable.masjid),
+                            contentDescription = "Header",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        BackButtonOnImage(
+                            onClick = { navController.popBackStack() },
+                            modifier = Modifier.align(Alignment.TopStart)
+                        )
                     }
-                    Text("Perbarui Data Inventaris", fontSize = 22.sp, color = Color(0xFF1E5B8A), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp))
 
-                    Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        "Perbarui Data Inventaris",
+                        fontSize = 22.sp,
+                        color = Color(0xFF1E5B8A),
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+
+                    Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         OutlinedTextField(namaBarang, { namaBarang = it }, label = { Text("Nama Barang") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
                         OutlinedTextField(jumlahBarang, { jumlahBarang = it }, label = { Text("Jumlah Barang") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
                         OutlinedTextField(kondisi, { kondisi = it }, label = { Text("Kondisi") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                        OutlinedTextField(tanggal, {}, label = { Text("Tanggal") }, modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() }, readOnly = true, shape = RoundedCornerShape(12.dp), trailingIcon = { Icon(Icons.Default.DateRange, "Pilih", Modifier.clickable { datePickerDialog.show() }) })
+                        OutlinedTextField(
+                            tanggal, {},
+                            label = { Text("Tanggal") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { datePickerDialog.show() },
+                            readOnly = true,
+                            shape = RoundedCornerShape(12.dp),
+                            trailingIcon = { Icon(Icons.Default.DateRange, "Pilih Tanggal", Modifier.clickable { datePickerDialog.show() }) }
+                        )
 
-                        Box(Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF0F5F9)).border(1.dp, Color(0xFFDDEEFF), RoundedCornerShape(16.dp)).clickable { showImageSourceDialog = true }, contentAlignment = Alignment.Center) {
+                        // Upload / Ubah Foto
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(180.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFF0F5F9))
+                                .border(1.dp, Color(0xFFDDEEFF), RoundedCornerShape(16.dp))
+                                .clickable { showImageSourceDialog = true },
+                            contentAlignment = Alignment.Center
+                        ) {
                             AsyncImage(
                                 model = newImageUri ?: existingImageUrl,
                                 contentDescription = "Foto Barang",
@@ -139,53 +209,68 @@ fun UpdateInventarisScreen(
 
                     Spacer(Modifier.weight(1f))
 
+                    // Tombol Update
                     Row(Modifier.fillMaxWidth().padding(24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Button({ showDeleteDialog = true }, colors = ButtonDefaults.buttonColors(Color(0xFFD9534F)), modifier = Modifier.weight(1f), shape = RoundedCornerShape(50)) { Text("Hapus") }
-                        Button({
-                            val file = newImageUri?.let { uriToFile(context, it) }
-                            isProcessing = true
-                            viewModel.updateInventaris(
-                                id = id,
-                                namaBarang = namaBarang,
-                                kondisi = kondisi,
-                                jumlah = jumlahBarang,
-                                tanggal = tanggal,
-                                fotoFile = file,
-                                onResult = { isSuccess, message ->
-                                    isProcessing = false
-                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                    if (isSuccess) navController.popBackStack()
-                                }
-                            )
-                        }, colors = ButtonDefaults.buttonColors(Color(0xFF5BC0DE)), modifier = Modifier.weight(1f), shape = RoundedCornerShape(50)) { Text("Update") }
+                        PrimaryButton(
+                            text = "Update",
+                            onClick = {
+                                val file = newImageUri?.let { uriToFile(context, it) }
+                                isProcessing = true
+                                viewModel.updateInventaris(
+                                    id = id,
+                                    namaBarang = namaBarang,
+                                    kondisi = kondisi,
+                                    jumlah = jumlahBarang,
+                                    tanggal = tanggal,
+                                    fotoFile = file,
+                                    onResult = { isSuccess, message ->
+                                        isProcessing = false
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                        if (isSuccess) navController.popBackStack()
+                                    }
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
+
+                // Loading overlay
                 if (isProcessing) {
-                    Box(Modifier.fillMaxSize().background(Color.Black.copy(0.5f)).clickable(false, onClick={}), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Color.White) }
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.5f))
+                            .clickable(enabled = false, onClick = {}),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color.White)
+                    }
                 }
             }
-        }
-    }
 
-    if (showImageSourceDialog) { /* Dialog pilih sumber gambar sama seperti di Create */ }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Konfirmasi Hapus") },
-            text = { Text("Yakin ingin menghapus item '${item?.namaBarang}'?") },
-            confirmButton = {
-                Button(onClick = {
-                    showDeleteDialog = false
-                    isProcessing = true
-                    viewModel.deleteInventaris(id) { isSuccess, message ->
-                        isProcessing = false
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                        if (isSuccess) navController.popBackStack()
+            // Dialog pilih sumber foto
+            if (showImageSourceDialog) {
+                AlertDialog(
+                    onDismissRequest = { showImageSourceDialog = false },
+                    title = { Text("Pilih Sumber Foto") },
+                    text = { Text("Ambil foto baru atau pilih dari galeri?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showImageSourceDialog = false
+                            val tempUri = getTempUri(context)
+                            tempUriHolder = tempUri
+                            cameraLauncher.launch(tempUri)
+                        }) { Text("Kamera") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            showImageSourceDialog = false
+                            galleryLauncher.launch("image/*")
+                        }) { Text("Galeri") }
                     }
-                }, colors = ButtonDefaults.buttonColors(Color.Red)) { Text("Hapus") }
-            },
-            dismissButton = { OutlinedButton({ showDeleteDialog = false }) { Text("Batal") } }
-        )
+                )
+            }
+        }
     }
 }

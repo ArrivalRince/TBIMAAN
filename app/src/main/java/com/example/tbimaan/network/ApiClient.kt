@@ -8,7 +8,8 @@ object ApiClient {
     // BASE_URL SEHARUSNYA HANYA BERISI SKEMA (http), ALAMAT IP, DAN PORT.
     // Pastikan diakhiri dengan garis miring '/'.
     // JANGAN sertakan path seperti "/api/" di sini.
-     const val BASE_URL = "http://192.168.100.100:5000/"
+    const val BASE_URL = "http://10.0.2.2:5000"
+
     // =============================================================
 
     val instance: ApiService by lazy {

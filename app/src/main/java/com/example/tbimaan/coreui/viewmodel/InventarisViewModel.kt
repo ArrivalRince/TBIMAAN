@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tbimaan.coreui.repository.InventarisRepository
 import com.example.tbimaan.model.InventarisResponse
-import com.example.tbimaan.network.ApiClient // <-- PERBAIKAN: Import ApiClient untuk mengakses Alamat Server (BASE_URL)
+import com.example.tbimaan.network.ApiClient
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -15,13 +15,10 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
+import java.util.TimeZone
 
-// =====================================================================
-// ===              PERBAIKAN UTAMA #1: KONSOLIDASI DATA CLASS        ===
-// === Data class ini dipusatkan di sini agar menjadi satu-satunya   ===
-// === sumber kebenaran (Single Source of Truth) untuk UI Inventaris ===
-// =====================================================================
+
 data class InventarisEntry(
     val id: String,
     val namaBarang: String,
@@ -31,11 +28,6 @@ data class InventarisEntry(
     val urlFoto: String // Properti ini akan berisi URL LENGKAP
 )
 
-/**
- * Ini adalah versi perbaikan lengkap dari InventarisViewModel.
- * Ia sekarang bisa menangani konversi tanggal dan URL gambar dengan benar,
- * sama seperti KeuanganViewModel.
- */
 class InventarisViewModel : ViewModel() {
     private val repository = InventarisRepository()
     private val TAG = "InventarisViewModel"
@@ -152,10 +144,6 @@ class InventarisViewModel : ViewModel() {
     fun clearSelectedItem() { _selectedItem.value = null }
 
 
-    // =====================================================================
-    // ===              PERBAIKAN UTAMA #2: FUNGSI KONVERSI DATA         ===
-    // === Di sinilah URL gambar diperbaiki dan tanggal di-parse        ===
-    // =====================================================================
     private fun InventarisResponse.toInventarisEntry(): InventarisEntry? {
         // Jika ID dari server null, jangan proses item ini (menjaga integritas data)
         if (this.idInventaris == null) {
