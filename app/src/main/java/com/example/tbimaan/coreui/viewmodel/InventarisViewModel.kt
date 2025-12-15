@@ -47,24 +47,22 @@ class InventarisViewModel : ViewModel() {
 
     // --- FUNGSI-FUNGSI UTAMA ---
 
-    fun loadInventaris() {
-        if (_isLoading.value) return
+    fun loadInventaris(force: Boolean = false) {
+        if (_isLoading.value && !force) return
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = ""
             repository.getInventaris { responseList ->
                 if (responseList != null) {
-                    // Mengubah setiap item dari server menjadi format yang siap ditampilkan
                     _inventarisList.value = responseList.mapNotNull { it.toInventarisEntry() }
-                    Log.d(TAG, "loadInventaris: Success, loaded ${_inventarisList.value.size} items.")
                 } else {
                     _errorMessage.value = "Gagal mengambil data inventaris."
-                    Log.e(TAG, "loadInventaris: Failed, responseList is null.")
                 }
                 _isLoading.value = false
             }
         }
     }
+
 
     // Fungsi get, create, update, delete lainnya (logikanya sudah benar, tidak perlu diubah)
     fun getInventarisById(id: String) {
@@ -127,19 +125,27 @@ class InventarisViewModel : ViewModel() {
     }
 
     fun deleteInventaris(id: String, onResult: (Boolean, String) -> Unit) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            repository.deleteInventaris(id) { isSuccess, message ->
-                if (isSuccess) {
-                    loadInventaris() // Muat ulang data jika berhasil
-                } else {
-                    _errorMessage.value = message
-                }
+        // 1) Optimistic: langsung hilangkan dari list agar UI langsung update
+        val before = _inventarisList.value
+        _inventarisList.value = before.filterNot { it.id == id }
+
+        _isLoading.value = true
+        repository.deleteInventaris(id) { isSuccess, message ->
+            if (!isSuccess) {
+                // 2) Rollback kalau gagal
+                _inventarisList.value = before
+                _errorMessage.value = message
+            } else {
+                // 3) Sinkron ulang (opsional tapi bagus) tanpa ketahan _isLoading
                 _isLoading.value = false
-                onResult(isSuccess, message)
+                loadInventaris(force = true)
             }
+
+            _isLoading.value = false
+            onResult(isSuccess, message)
         }
     }
+
 
     fun clearSelectedItem() { _selectedItem.value = null }
 
