@@ -1,7 +1,8 @@
 package com.example.tbimaan.coreui.screen.Kegiatan
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -37,11 +38,22 @@ import coil.compose.AsyncImage
 import com.example.tbimaan.R
 import com.example.tbimaan.coreui.navigation.KEGIATAN_GRAPH_ROUTE
 import com.example.tbimaan.coreui.screen.Keuangan.getTempUri
+import com.example.tbimaan.coreui.utils.uriToFile
+import com.example.tbimaan.model.UserSession
+import com.example.tbimaan.network.ApiClient
+import com.example.tbimaan.network.KegiatanDto
+import kotlinx.coroutines.launch
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import java.util.Calendar
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateKegiatanScreen(
     navController: NavController,
+    idKegiatan: Int,
     onBackClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -54,7 +66,8 @@ fun UpdateKegiatanScreen(
     deskripsiAwal: String,
     statusAwal: String
 ) {
-    // State untuk input data
+
+    // STATE INPUT
     var namaKegiatan by remember { mutableStateOf(namaAwal) }
     var tanggalKegiatan by remember { mutableStateOf(tanggalAwal) }
     var waktuKegiatan by remember { mutableStateOf(waktuAwal) }
@@ -62,43 +75,52 @@ fun UpdateKegiatanScreen(
     var penceramah by remember { mutableStateOf(penceramahAwal) }
     var deskripsi by remember { mutableStateOf(deskripsiAwal) }
     var status by remember { mutableStateOf(statusAwal) }
+
     var isStatusExpanded by remember { mutableStateOf(false) }
     val statusOptions = listOf("Akan Datang", "Selesai")
 
-    // State untuk upload foto
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var showImageSourceDialog by remember { mutableStateOf(false) }
-    var tempUriHolder by remember { mutableStateOf<Uri?>(null) }
+    // FOTO
     val context = LocalContext.current
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var tempUriHolder by remember { mutableStateOf<Uri?>(null) }
+    var showImageSourceDialog by remember { mutableStateOf(false) }
 
-    // Launcher galeri
     val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-        onResult = { uri -> if (uri != null) imageUri = uri }
-    )
+        ActivityResultContracts.GetContent()
+    ) { uri -> if (uri != null) imageUri = uri }
 
-    // Launcher kamera
     val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture(),
-        onResult = { success -> if (success) imageUri = tempUriHolder }
-    )
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) imageUri = tempUriHolder
+    }
+
+    // DATE & TIME DIALOG
+    val calendar = remember { Calendar.getInstance() }
+
+    // API / UI state
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(false) }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             KegiatanBottomAppBar(
                 onNavigate = onNavigate,
                 currentRoute = KEGIATAN_GRAPH_ROUTE
             )
-        },
-        containerColor = Color(0xFFF9F9F9)
+        }
     ) { innerPadding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding())
                 .verticalScroll(rememberScrollState())
         ) {
-            // 🔷 Header
+
+            // HEADER
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -106,67 +128,173 @@ fun UpdateKegiatanScreen(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.masjiddua),
-                    contentDescription = "Masjid Background",
+                    contentDescription = "",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
+
                 IconButton(
-                    onClick = { onBackClick() },
+                    onClick = onBackClick,
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .statusBarsPadding()
                         .padding(12.dp)
                         .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(50))
                 ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.Black)
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             Text(
-                text = "Perbarui Data Kegiatan",
+                "Perbarui Data Kegiatan",
                 fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
                 color = Color(0xFF1E5B8A),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(Modifier.height(20.dp))
 
-            // 🔷 Form Card
+            // CARD FORM PUTIH + SHADOW
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 8.dp
+                )
             ) {
+
                 Column(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    OutlinedTextField(value = namaKegiatan, onValueChange = { namaKegiatan = it }, label = { Text("Nama Kegiatan") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                    OutlinedTextField(value = tanggalKegiatan, onValueChange = { tanggalKegiatan = it }, label = { Text("Tanggal") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                    OutlinedTextField(value = waktuKegiatan, onValueChange = { waktuKegiatan = it }, label = { Text("Waktu") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                    OutlinedTextField(value = lokasi, onValueChange = { lokasi = it }, label = { Text("Lokasi") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                    OutlinedTextField(value = penceramah, onValueChange = { penceramah = it }, label = { Text("Penceramah") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                    OutlinedTextField(value = deskripsi, onValueChange = { deskripsi = it }, label = { Text("Deskripsi Kegiatan") }, modifier = Modifier.fillMaxWidth().height(100.dp), shape = RoundedCornerShape(12.dp))
 
-                    // 🔽 Dropdown Status
-                    ExposedDropdownMenuBox(expanded = isStatusExpanded, onExpandedChange = { isStatusExpanded = !isStatusExpanded }) {
+                    // NAMA
+                    OutlinedTextField(
+                        value = namaKegiatan,
+                        onValueChange = { namaKegiatan = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Nama Kegiatan") }
+                    )
+
+                    // TANGGAL
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val y = calendar.get(Calendar.YEAR)
+                                val m = calendar.get(Calendar.MONTH)
+                                val d = calendar.get(Calendar.DAY_OF_MONTH)
+
+                                DatePickerDialog(
+                                    context,
+                                    { _, yy, mm, dd ->
+                                        tanggalKegiatan = String.format(
+                                            "%04d-%02d-%02d",
+                                            yy,
+                                            mm + 1,
+                                            dd
+                                        )
+                                    },
+                                    y, m, d
+                                ).show()
+                            }
+                    ) {
+                        OutlinedTextField(
+                            value = tanggalKegiatan,
+                            onValueChange = {},
+                            enabled = false,
+                            readOnly = true,
+                            label = { Text("Tanggal (YYYY-MM-DD)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // WAKTU
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val h = calendar.get(Calendar.HOUR_OF_DAY)
+                                val mm = calendar.get(Calendar.MINUTE)
+
+                                TimePickerDialog(
+                                    context,
+                                    { _, hh, minu ->
+                                        waktuKegiatan = String.format("%02d:%02d WIB", hh, minu)
+                                    },
+                                    h, mm, true
+                                ).show()
+                            }
+                    ) {
+                        OutlinedTextField(
+                            value = waktuKegiatan,
+                            onValueChange = {},
+                            enabled = false,
+                            readOnly = true,
+                            label = { Text("Waktu (HH:mm WIB)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // LOKASI
+                    OutlinedTextField(
+                        value = lokasi,
+                        onValueChange = { lokasi = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Lokasi") }
+                    )
+
+                    // PENCERAMAH
+                    OutlinedTextField(
+                        value = penceramah,
+                        onValueChange = { penceramah = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Penceramah") }
+                    )
+
+                    // DESKRIPSI
+                    OutlinedTextField(
+                        value = deskripsi,
+                        onValueChange = { deskripsi = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        label = { Text("Deskripsi") }
+                    )
+
+                    // STATUS DROPDOWN
+                    ExposedDropdownMenuBox(
+                        expanded = isStatusExpanded,
+                        onExpandedChange = { isStatusExpanded = !isStatusExpanded }
+                    ) {
+
                         OutlinedTextField(
                             value = status,
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Status") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isStatusExpanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = isStatusExpanded
+                                )
+                            }
                         )
-                        ExposedDropdownMenu(expanded = isStatusExpanded, onDismissRequest = { isStatusExpanded = false }) {
+
+                        ExposedDropdownMenu(
+                            expanded = isStatusExpanded,
+                            onDismissRequest = { isStatusExpanded = false }
+                        ) {
                             statusOptions.forEach { option ->
                                 DropdownMenuItem(
                                     text = { Text(option) },
@@ -179,7 +307,7 @@ fun UpdateKegiatanScreen(
                         }
                     }
 
-                    // 🔷 Upload Foto
+                    // FOTO
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -190,16 +318,21 @@ fun UpdateKegiatanScreen(
                             .clickable { showImageSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
+
                         if (imageUri == null) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Add Photo", tint = Color(0xFF1E5B8A).copy(alpha = 0.8f), modifier = Modifier.size(40.dp))
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text("Tambah Foto", color = Color(0xFF1E5B8A), fontWeight = FontWeight.SemiBold)
+                                Icon(
+                                    Icons.Default.AddPhotoAlternate,
+                                    contentDescription = "",
+                                    tint = Color(0xFF1E5B8A),
+                                    modifier = Modifier.size(40.dp)
+                                )
+                                Text("Tambah Foto", color = Color(0xFF1E5B8A))
                             }
                         } else {
                             AsyncImage(
                                 model = imageUri,
-                                contentDescription = "Foto Kegiatan",
+                                contentDescription = "",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
@@ -208,36 +341,136 @@ fun UpdateKegiatanScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(Modifier.height(20.dp))
 
+            // BUTTONS
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Button(onClick = { onDeleteClick() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD9534F)), modifier = Modifier.weight(1f), shape = RoundedCornerShape(50)) {
+
+                // Hapus
+                Button(
+                    onClick = {
+                        isLoading = true
+                        ApiClient.instance.deleteKegiatan(idKegiatan.toString()).enqueue(object : Callback<Void> {
+                            override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                                isLoading = false
+                                if (response.isSuccessful) {
+                                    coroutineScope.launch { snackbarHostState.showSnackbar("Kegiatan dihapus!") }
+                                    onDeleteClick()
+                                    navController.navigate("kegiatan_graph") {
+                                        popUpTo("kegiatan_graph") { inclusive = true }
+                                    }
+                                } else {
+                                    coroutineScope.launch { snackbarHostState.showSnackbar("Gagal hapus (kode ${response.code()})") }
+                                }
+                            }
+
+                            override fun onFailure(call: Call<Void>, t: Throwable) {
+                                isLoading = false
+                                coroutineScope.launch { snackbarHostState.showSnackbar("Koneksi gagal: ${t.message}") }
+                            }
+                        })
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD9534F)),
+                    enabled = !isLoading
+                ) {
                     Text("Hapus")
                 }
-                Button(onClick = { onUpdateClick() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5BC0DE)), modifier = Modifier.weight(1f), shape = RoundedCornerShape(50)) {
-                    Text("Update")
+
+                // Update
+                Button(
+                    onClick = {
+
+                        if (
+                            namaKegiatan.isBlank() ||
+                            tanggalKegiatan.isBlank() ||
+                            waktuKegiatan.isBlank() ||
+                            lokasi.isBlank() ||
+                            penceramah.isBlank()
+                        ) {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Harap isi semua field wajib.")
+                            }
+                            return@Button
+                        }
+
+                        val userId = UserSession.idUser ?: 1
+
+                        // jika ada imageUri, coba ubah jadi File dan kirim nama file (backend saat ini tidak multipart)
+                        val file: File? = try {
+                            imageUri?.let { uriToFile(context, it) }
+                        } catch (e: Exception) {
+                            null
+                        }
+
+                        val payload = KegiatanDto(
+                            id_kegiatan = idKegiatan,
+                            id_user = userId,
+                            nama_kegiatan = namaKegiatan,
+                            tanggal_kegiatan = tanggalKegiatan,
+                            waktu_kegiatan = waktuKegiatan,
+                            lokasi = lokasi.ifBlank { null },
+                            penceramah = penceramah.ifBlank { null },
+                            deskripsi = deskripsi.ifBlank { null },
+                            status_kegiatan = status,
+                            foto_kegiatan = file?.name ?: null
+                        )
+
+                        isLoading = true
+                        ApiClient.instance.updateKegiatan(idKegiatan.toString(), payload).enqueue(object : Callback<KegiatanDto> {
+                            override fun onResponse(call: Call<KegiatanDto>, response: Response<KegiatanDto>) {
+                                isLoading = false
+                                if (response.isSuccessful) {
+                                    coroutineScope.launch { snackbarHostState.showSnackbar("Kegiatan diperbarui!") }
+                                    onUpdateClick()
+                                    navController.navigate("kegiatan_graph") {
+                                        popUpTo("kegiatan_graph") { inclusive = true }
+                                    }
+                                } else {
+                                    coroutineScope.launch { snackbarHostState.showSnackbar("Gagal update (kode ${response.code()})") }
+                                }
+                            }
+
+                            override fun onFailure(call: Call<KegiatanDto>, t: Throwable) {
+                                isLoading = false
+                                coroutineScope.launch { snackbarHostState.showSnackbar("Koneksi gagal: ${t.message}") }
+                            }
+                        })
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5BC0DE)),
+                    enabled = !isLoading
+                ) {
+
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                    } else Text("Update")
                 }
             }
         }
     }
 
-    // 🔷 Dialog pilih sumber gambar
+    // DIALOG FOTO
     if (showImageSourceDialog) {
         AlertDialog(
             onDismissRequest = { showImageSourceDialog = false },
             title = { Text("Pilih Sumber Foto") },
-            text = { Text("Pilih dari Galeri atau ambil foto baru?") },
+            text = { Text("Ambil foto atau pilih dari galeri") },
             confirmButton = {
                 TextButton(onClick = {
                     showImageSourceDialog = false
-                    val tempUri = getTempUri(context)
-                    tempUriHolder = tempUri
-                    cameraLauncher.launch(tempUri)
+                    val t = getTempUri(context)
+                    tempUriHolder = t
+                    cameraLauncher.launch(t)
                 }) { Text("Kamera") }
             },
             dismissButton = {
@@ -250,52 +483,71 @@ fun UpdateKegiatanScreen(
     }
 }
 
-// 🔹 Bottom Nav Bar (sama seperti sebelumnya)
+// BOTTOM NAV BAR
 @Composable
-private fun KegiatanBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
+private fun KegiatanBottomAppBar(
+    onNavigate: (String) -> Unit,
+    currentRoute: String
+) {
+
     Surface(shadowElevation = 8.dp, color = Color(0xFFF8F8F8)) {
+
         Row(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             BottomNavItem("Home", Icons.Default.Home, false) { onNavigate("home") }
             BottomNavItem("Inventaris", Icons.Outlined.Inventory, false) { onNavigate("inventaris_graph") }
-            BottomNavItem("Kegiatan", Icons.Default.List, true) { }
+            BottomNavItem("Kegiatan", Icons.Default.List, true) {}
             BottomNavItem("Keuangan", Icons.Outlined.Paid, false) { onNavigate("keuangan_graph") }
         }
     }
 }
 
+
 @Composable
-private fun RowScope.BottomNavItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
-    val contentColor = if (isSelected) Color(0xFF1E5B8A) else Color.Gray
+private fun RowScope.BottomNavItem(
+    label: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+
+    val color = if (isSelected) Color(0xFF1E5B8A) else Color.Gray
+
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier.weight(1f).height(64.dp).clickable(onClick = onClick)
+        modifier = Modifier
+            .weight(1f)
+            .height(64.dp)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(imageVector = icon, contentDescription = label, tint = contentColor)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, color = contentColor, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+        Icon(icon, contentDescription = "", tint = color)
+        Text(label, color = color, fontSize = 11.sp)
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
 fun UpdateKegiatanScreenPreview() {
     UpdateKegiatanScreen(
         navController = rememberNavController(),
+        idKegiatan = 1,
         onBackClick = {},
         onUpdateClick = {},
         onDeleteClick = {},
         onNavigate = {},
-        namaAwal = "Kajian Malam Jumat",
-        tanggalAwal = "15/11/2025",
-        waktuAwal = "20.00 WIB",
+        namaAwal = "Kajian Jumat",
+        tanggalAwal = "2025-11-15",
+        waktuAwal = "20:00 WIB",
         lokasiAwal = "Aula Utama",
-        penceramahAwal = "Ust. Rafi",
-        deskripsiAwal = "Kajian bulanan rutin.",
+        penceramahAwal = "Ust. Ahmad",
+        deskripsiAwal = "Kajian rutin.",
         statusAwal = "Akan Datang"
     )
 }
