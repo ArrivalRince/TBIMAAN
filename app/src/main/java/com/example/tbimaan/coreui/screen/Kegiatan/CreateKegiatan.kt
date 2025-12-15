@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,7 +52,6 @@ fun CreateKegiatanScreen(
 ) {
     var nama by remember { mutableStateOf("") }
     var tanggal by remember { mutableStateOf("") } // YYYY-MM-DD
-    var waktu by remember { mutableStateOf("") } // e.g. 07:00 WIB
     var lokasi by remember { mutableStateOf("") }
     var penceramah by remember { mutableStateOf("") }
     var deskripsi by remember { mutableStateOf("") }
@@ -161,29 +161,9 @@ fun CreateKegiatanScreen(
                             readOnly = true,
                             trailingIcon = {
                                 IconButton(onClick = { datePickerDialog.show() }) {
-                                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Pilih tanggal")
+                                    Icon(Icons.Default.DateRange, contentDescription = "Pilih tanggal")
                                 }
                             }
-                        )
-
-                        OutlinedTextField(
-                            value = waktu,
-                            onValueChange = {},
-                            label = { Text("Waktu (misal: 07:00 WIB)") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    val h = calendar.get(Calendar.HOUR_OF_DAY)
-                                    val m = calendar.get(Calendar.MINUTE)
-                                    TimePickerDialog(
-                                        context,
-                                        { _, hourOfDay, minute ->
-                                            waktu = "%02d:%02d WIB".format(hourOfDay, minute)
-                                        },
-                                        h, m, true
-                                    ).show()
-                                },
-                            readOnly = true
                         )
 
                         OutlinedTextField(
@@ -271,7 +251,7 @@ fun CreateKegiatanScreen(
                         text = if (isLoading) "Menyimpan..." else "Simpan",
                         onClick = {
                             // Validasi
-                            if (nama.isBlank() || tanggal.isBlank() || waktu.isBlank() || lokasi.isBlank() || penceramah.isBlank()) {
+                            if (nama.isBlank() || tanggal.isBlank() || lokasi.isBlank() || penceramah.isBlank()) {
                                 Toast.makeText(context, "Harap isi semua field wajib.", Toast.LENGTH_SHORT).show()
                                 return@PrimaryButton
                             }
@@ -295,7 +275,6 @@ fun CreateKegiatanScreen(
                                 id_user = idUser,
                                 nama_kegiatan = nama,
                                 tanggal_kegiatan = tanggal,
-                                waktu_kegiatan = waktu,
                                 lokasi = lokasi.ifBlank { null },
                                 penceramah = penceramah.ifBlank { null },
                                 deskripsi = deskripsi.ifBlank { null },

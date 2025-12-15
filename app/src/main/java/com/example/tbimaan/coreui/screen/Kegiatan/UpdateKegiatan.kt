@@ -1,7 +1,6 @@
 package com.example.tbimaan.coreui.screen.Kegiatan
 
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -60,7 +59,6 @@ fun UpdateKegiatanScreen(
     onNavigate: (String) -> Unit,
     namaAwal: String,
     tanggalAwal: String,
-    waktuAwal: String,
     lokasiAwal: String,
     penceramahAwal: String,
     deskripsiAwal: String,
@@ -70,7 +68,6 @@ fun UpdateKegiatanScreen(
     // STATE INPUT
     var namaKegiatan by remember { mutableStateOf(namaAwal) }
     var tanggalKegiatan by remember { mutableStateOf(tanggalAwal) }
-    var waktuKegiatan by remember { mutableStateOf(waktuAwal) }
     var lokasi by remember { mutableStateOf(lokasiAwal) }
     var penceramah by remember { mutableStateOf(penceramahAwal) }
     var deskripsi by remember { mutableStateOf(deskripsiAwal) }
@@ -157,35 +154,33 @@ fun UpdateKegiatanScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // CARD FORM PUTIH + SHADOW
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 8.dp
-                )
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
-
                 Column(
                     modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 
                     // NAMA
                     OutlinedTextField(
                         value = namaKegiatan,
                         onValueChange = { namaKegiatan = it },
+                        label = { Text("Nama Kegiatan") },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Nama Kegiatan") }
+                        shape = RoundedCornerShape(12.dp)
                     )
 
-                    // TANGGAL
-                    Box(
+                    // TANGGAL (SAMA DENGAN CREATE)
+                    OutlinedTextField(
+                        value = tanggalKegiatan,
+                        onValueChange = {},
+                        label = { Text("Tanggal (YYYY-MM-DD)") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
@@ -196,118 +191,70 @@ fun UpdateKegiatanScreen(
                                 DatePickerDialog(
                                     context,
                                     { _, yy, mm, dd ->
-                                        tanggalKegiatan = String.format(
-                                            "%04d-%02d-%02d",
-                                            yy,
-                                            mm + 1,
-                                            dd
-                                        )
+                                        tanggalKegiatan = "%04d-%02d-%02d".format(yy, mm + 1, dd)
                                     },
                                     y, m, d
                                 ).show()
-                            }
-                    ) {
-                        OutlinedTextField(
-                            value = tanggalKegiatan,
-                            onValueChange = {},
-                            enabled = false,
-                            readOnly = true,
-                            label = { Text("Tanggal (YYYY-MM-DD)") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                            },
+                        readOnly = true,
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                val y = calendar.get(Calendar.YEAR)
+                                val m = calendar.get(Calendar.MONTH)
+                                val d = calendar.get(Calendar.DAY_OF_MONTH)
 
-                    // WAKTU
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val h = calendar.get(Calendar.HOUR_OF_DAY)
-                                val mm = calendar.get(Calendar.MINUTE)
-
-                                TimePickerDialog(
+                                DatePickerDialog(
                                     context,
-                                    { _, hh, minu ->
-                                        waktuKegiatan = String.format("%02d:%02d WIB", hh, minu)
+                                    { _, yy, mm, dd ->
+                                        tanggalKegiatan = "%04d-%02d-%02d".format(yy, mm + 1, dd)
                                     },
-                                    h, mm, true
+                                    y, m, d
                                 ).show()
+                            }) {
+                                Icon(Icons.Default.DateRange, contentDescription = "Pilih tanggal")
                             }
-                    ) {
-                        OutlinedTextField(
-                            value = waktuKegiatan,
-                            onValueChange = {},
-                            enabled = false,
-                            readOnly = true,
-                            label = { Text("Waktu (HH:mm WIB)") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                        }
+                    )
 
                     // LOKASI
                     OutlinedTextField(
                         value = lokasi,
                         onValueChange = { lokasi = it },
+                        label = { Text("Lokasi") },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Lokasi") }
+                        shape = RoundedCornerShape(12.dp)
                     )
 
                     // PENCERAMAH
                     OutlinedTextField(
                         value = penceramah,
                         onValueChange = { penceramah = it },
+                        label = { Text("Penceramah") },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Penceramah") }
+                        shape = RoundedCornerShape(12.dp)
                     )
 
                     // DESKRIPSI
                     OutlinedTextField(
                         value = deskripsi,
                         onValueChange = { deskripsi = it },
+                        label = { Text("Deskripsi Kegiatan") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(100.dp),
-                        label = { Text("Deskripsi") }
+                        shape = RoundedCornerShape(12.dp)
                     )
 
-                    // STATUS DROPDOWN
-                    ExposedDropdownMenuBox(
-                        expanded = isStatusExpanded,
-                        onExpandedChange = { isStatusExpanded = !isStatusExpanded }
-                    ) {
+                    // STATUS (READ ONLY / DROPDOWN TETAP)
+                    OutlinedTextField(
+                        value = status,
+                        onValueChange = {},
+                        label = { Text("Status Kegiatan") },
+                        modifier = Modifier.fillMaxWidth(),
+                        readOnly = true
+                    )
 
-                        OutlinedTextField(
-                            value = status,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Status") },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(
-                                    expanded = isStatusExpanded
-                                )
-                            }
-                        )
-
-                        ExposedDropdownMenu(
-                            expanded = isStatusExpanded,
-                            onDismissRequest = { isStatusExpanded = false }
-                        ) {
-                            statusOptions.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option) },
-                                    onClick = {
-                                        status = option
-                                        isStatusExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // FOTO
+                    // FOTO (SAMA DENGAN CREATE)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -318,21 +265,21 @@ fun UpdateKegiatanScreen(
                             .clickable { showImageSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
-
                         if (imageUri == null) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
                                     Icons.Default.AddPhotoAlternate,
-                                    contentDescription = "",
+                                    contentDescription = "Tambah Foto",
                                     tint = Color(0xFF1E5B8A),
                                     modifier = Modifier.size(40.dp)
                                 )
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text("Tambah Foto", color = Color(0xFF1E5B8A))
                             }
                         } else {
                             AsyncImage(
                                 model = imageUri,
-                                contentDescription = "",
+                                contentDescription = "Foto Kegiatan",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
@@ -389,7 +336,6 @@ fun UpdateKegiatanScreen(
                         if (
                             namaKegiatan.isBlank() ||
                             tanggalKegiatan.isBlank() ||
-                            waktuKegiatan.isBlank() ||
                             lokasi.isBlank() ||
                             penceramah.isBlank()
                         ) {
@@ -413,7 +359,6 @@ fun UpdateKegiatanScreen(
                             id_user = userId,
                             nama_kegiatan = namaKegiatan,
                             tanggal_kegiatan = tanggalKegiatan,
-                            waktu_kegiatan = waktuKegiatan,
                             lokasi = lokasi.ifBlank { null },
                             penceramah = penceramah.ifBlank { null },
                             deskripsi = deskripsi.ifBlank { null },
@@ -544,7 +489,6 @@ fun UpdateKegiatanScreenPreview() {
         onNavigate = {},
         namaAwal = "Kajian Jumat",
         tanggalAwal = "2025-11-15",
-        waktuAwal = "20:00 WIB",
         lokasiAwal = "Aula Utama",
         penceramahAwal = "Ust. Ahmad",
         deskripsiAwal = "Kajian rutin.",

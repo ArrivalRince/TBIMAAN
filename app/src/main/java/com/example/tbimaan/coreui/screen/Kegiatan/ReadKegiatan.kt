@@ -49,7 +49,6 @@ data class Kegiatan(
     val idKegiatan: Int,
     val nama: String,
     val tanggal: String,
-    val waktu: String,
     val lokasi: String,
     val penceramah: String,
     val deskripsi: String,
@@ -86,17 +85,15 @@ fun ReadKegiatanScreen(
                             // otherwise prefix with BASE_URL (if available)
                             val rawFoto = dto.foto_kegiatan
                             val fotoFull = when {
-                                rawFoto == null -> null
+                                rawFoto.isNullOrBlank() -> null
                                 rawFoto.startsWith("http", ignoreCase = true) -> rawFoto
-                                rawFoto.startsWith("/") -> "${ApiClient.BASE_URL.removeSuffix("/")}$rawFoto"
-                                else -> "${ApiClient.BASE_URL.removeSuffix("/")}/${rawFoto}"
+                                else -> "${ApiClient.BASE_URL.removeSuffix("/")}/uploads/$rawFoto"
                             }
 
                             Kegiatan(
                                 idKegiatan = id,
                                 nama = dto.nama_kegiatan ?: "Tanpa Nama",
                                 tanggal = dto.tanggal_kegiatan ?: "-",
-                                waktu = dto.waktu_kegiatan ?: "-",
                                 lokasi = dto.lokasi ?: "-",
                                 penceramah = dto.penceramah ?: "-",
                                 deskripsi = dto.deskripsi ?: "",
@@ -258,14 +255,13 @@ fun ReadKegiatanScreen(
                             KegiatanCard(kegiatan = kegiatan) {
                                 val namaEnc = URLEncoder.encode(kegiatan.nama, StandardCharsets.UTF_8.toString())
                                 val tanggalEnc = URLEncoder.encode(kegiatan.tanggal, StandardCharsets.UTF_8.toString())
-                                val waktuEnc = URLEncoder.encode(kegiatan.waktu, StandardCharsets.UTF_8.toString())
                                 val lokasiEnc = URLEncoder.encode(kegiatan.lokasi, StandardCharsets.UTF_8.toString())
                                 val pjEnc = URLEncoder.encode(kegiatan.penceramah, StandardCharsets.UTF_8.toString())
                                 val deskripsiEnc = URLEncoder.encode(kegiatan.deskripsi, StandardCharsets.UTF_8.toString())
                                 val statusEnc = URLEncoder.encode(kegiatan.status, StandardCharsets.UTF_8.toString())
 
                                 navController.navigate(
-                                    "update_kegiatan/${kegiatan.idKegiatan}/$namaEnc/$tanggalEnc/$waktuEnc/$lokasiEnc/$pjEnc/$deskripsiEnc/$statusEnc"
+                                    "update_kegiatan/${kegiatan.idKegiatan}/$namaEnc/$tanggalEnc/$lokasiEnc/$pjEnc/$deskripsiEnc/$statusEnc"
                                 )
                             }
                         }
@@ -358,7 +354,6 @@ fun KegiatanCard(kegiatan: Kegiatan, onEditClick: () -> Unit) {
 
                 Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                     Text("Tanggal: ${kegiatan.tanggal}", fontSize = 12.sp)
-                    Text("Waktu: ${kegiatan.waktu}", fontSize = 12.sp)
                     Text("Lokasi: ${kegiatan.lokasi}", fontSize = 12.sp)
                     Text("Penceramah: ${kegiatan.penceramah}", fontSize = 12.sp)
                     Text(

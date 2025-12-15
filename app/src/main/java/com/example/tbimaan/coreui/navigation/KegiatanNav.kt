@@ -46,14 +46,13 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
         }
 
         // 🔹 Halaman Update Kegiatan
-        //    route sekarang: update_kegiatan/{idKegiatan}/{nama}/{tanggal}/{waktu}/{lokasi}/{penceramah}/{deskripsi}/{status}
+        //    route sekarang: update_kegiatan/{idKegiatan}/{nama}/{tanggal}/{lokasi}/{penceramah}/{deskripsi}/{status}
         composable(
-            route = "update_kegiatan/{idKegiatan}/{nama}/{tanggal}/{waktu}/{lokasi}/{penceramah}/{deskripsi}/{status}",
+            route = "update_kegiatan/{idKegiatan}/{nama}/{tanggal}/{lokasi}/{penceramah}/{deskripsi}/{status}",
             arguments = listOf(
                 navArgument("idKegiatan") { type = NavType.IntType },
                 navArgument("nama") { type = NavType.StringType },
                 navArgument("tanggal") { type = NavType.StringType },
-                navArgument("waktu") { type = NavType.StringType },
                 navArgument("lokasi") { type = NavType.StringType },
                 navArgument("penceramah") { type = NavType.StringType },
                 navArgument("deskripsi") { type = NavType.StringType },
@@ -64,7 +63,6 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
             val idKegiatan = backStackEntry.arguments?.getInt("idKegiatan") ?: 0
             val namaAwal = backStackEntry.arguments?.getString("nama") ?: ""
             val tanggalAwal = backStackEntry.arguments?.getString("tanggal") ?: ""
-            val waktuAwal = backStackEntry.arguments?.getString("waktu") ?: ""
             val lokasiAwal = backStackEntry.arguments?.getString("lokasi") ?: ""
             val penceramahAwal = backStackEntry.arguments?.getString("penceramah") ?: ""
             val deskripsiAwal = backStackEntry.arguments?.getString("deskripsi") ?: ""
@@ -79,7 +77,6 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
                 onNavigate = onNavigate,
                 namaAwal = namaAwal,
                 tanggalAwal = tanggalAwal,
-                waktuAwal = waktuAwal,
                 lokasiAwal = lokasiAwal,
                 penceramahAwal = penceramahAwal,
                 deskripsiAwal = deskripsiAwal,
