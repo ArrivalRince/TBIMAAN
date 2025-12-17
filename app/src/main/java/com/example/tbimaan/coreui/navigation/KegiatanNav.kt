@@ -13,30 +13,38 @@ import com.example.tbimaan.coreui.screen.Kegiatan.UpdateKegiatanScreen
 import com.example.tbimaan.coreui.viewmodel.KegiatanViewModel
 
 fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
+
     navigation(
         startDestination = "read_kegiatan",
         route = KEGIATAN_GRAPH_ROUTE
     ) {
+
         val onNavigate: (String) -> Unit = { route ->
             navController.navigate(route) {
-                popUpTo(navController.graph.startDestinationId) { inclusive = true }
                 launchSingleTop = true
             }
         }
 
-        // 🔹 Halaman Daftar Kegiatan
+        // =======================
+        // READ KEGIATAN
+        // =======================
         composable("read_kegiatan") {
             ReadKegiatanScreen(
                 navController = navController,
                 onNavigate = onNavigate,
-                onAddClick = { navController.navigate("create_kegiatan") },
-                onEditClick = { route -> navController.navigate(route) }
+                onAddClick = {
+                    navController.navigate("create_kegiatan")
+                },
+                onEditClick = { route ->
+                    navController.navigate(route)
+                }
             )
         }
 
-        // 🔹 Halaman Tambah Kegiatan Baru
+        // =======================
+        // CREATE KEGIATAN
+        // =======================
         composable("create_kegiatan") {
-            // Ambil atau buat ViewModel untuk kegiatan (menggunakan Compose viewModel())
             val kegiatanViewModel: KegiatanViewModel = viewModel()
 
             CreateKegiatanScreen(
@@ -45,10 +53,11 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
             )
         }
 
-        // 🔹 Halaman Update Kegiatan
-        //    route sekarang: update_kegiatan/{idKegiatan}/{nama}/{tanggal}/{lokasi}/{penceramah}/{deskripsi}/{status}
+        // =======================
+        // UPDATE KEGIATAN
+        // =======================
         composable(
-            route = "update_kegiatan/{idKegiatan}/{nama}/{tanggal}/{lokasi}/{penceramah}/{deskripsi}/{status}",
+            route = "update_kegiatan/{idKegiatan}/{nama}/{tanggal}/{lokasi}/{penceramah}/{deskripsi}/{status}/{foto}",
             arguments = listOf(
                 navArgument("idKegiatan") { type = NavType.IntType },
                 navArgument("nama") { type = NavType.StringType },
@@ -56,31 +65,28 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
                 navArgument("lokasi") { type = NavType.StringType },
                 navArgument("penceramah") { type = NavType.StringType },
                 navArgument("deskripsi") { type = NavType.StringType },
-                navArgument("status") { type = NavType.StringType }
+                navArgument("status") { type = NavType.StringType },
+                navArgument("foto") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = ""
+                }
             )
         ) { backStackEntry ->
 
-            val idKegiatan = backStackEntry.arguments?.getInt("idKegiatan") ?: 0
-            val namaAwal = backStackEntry.arguments?.getString("nama") ?: ""
-            val tanggalAwal = backStackEntry.arguments?.getString("tanggal") ?: ""
-            val lokasiAwal = backStackEntry.arguments?.getString("lokasi") ?: ""
-            val penceramahAwal = backStackEntry.arguments?.getString("penceramah") ?: ""
-            val deskripsiAwal = backStackEntry.arguments?.getString("deskripsi") ?: ""
-            val statusAwal = backStackEntry.arguments?.getString("status") ?: ""
+            val args = backStackEntry.arguments!!
 
             UpdateKegiatanScreen(
                 navController = navController,
-                idKegiatan = idKegiatan,                       // ✅ sekarang id dikirim
-                onBackClick = { navController.popBackStack() },
-                onUpdateClick = { navController.popBackStack() },
-                onDeleteClick = { navController.popBackStack() },
+                idKegiatan = args.getInt("idKegiatan"),
                 onNavigate = onNavigate,
-                namaAwal = namaAwal,
-                tanggalAwal = tanggalAwal,
-                lokasiAwal = lokasiAwal,
-                penceramahAwal = penceramahAwal,
-                deskripsiAwal = deskripsiAwal,
-                statusAwal = statusAwal
+                namaAwal = args.getString("nama").orEmpty(),
+                tanggalAwal = args.getString("tanggal").orEmpty(),
+                lokasiAwal = args.getString("lokasi").orEmpty(),
+                penceramahAwal = args.getString("penceramah").orEmpty(),
+                deskripsiAwal = args.getString("deskripsi").orEmpty(),
+                statusAwal = args.getString("status").orEmpty(),
+                fotoAwal = args.getString("foto")
             )
         }
     }

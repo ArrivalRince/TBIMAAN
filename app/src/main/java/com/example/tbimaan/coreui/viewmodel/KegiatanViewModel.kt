@@ -7,6 +7,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tbimaan.coreui.repository.KegiatanRepository
 import com.example.tbimaan.network.KegiatanDto
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -72,19 +78,59 @@ class KegiatanViewModel : ViewModel() {
     }
 
     // --- CREATE ---
-    fun createKegiatan(
-        kegiatanDto: KegiatanDto,
+    fun createKegiatanMultipart(
+        idUser: String,
+        nama: String,
+        tanggal: String,
+        lokasi: String?,
+        penceramah: String?,
+        deskripsi: String?,
+        status: String,
+        fotoFile: File?,
         onResult: (Boolean, String) -> Unit
     ) {
         viewModelScope.launch {
             try {
-                repository.createKegiatan(kegiatanDto) { isSuccess, message ->
+                // text helper
+                fun textPart(value: String?): RequestBody? {
+                    return value?.takeIf { it.isNotBlank() }
+                        ?.toRequestBody("text/plain".toMediaTypeOrNull())
+                }
+
+                val idUserPart = idUser.toRequestBody("text/plain".toMediaTypeOrNull())
+                val namaPart = nama.toRequestBody("text/plain".toMediaTypeOrNull())
+                val tanggalPart = tanggal.toRequestBody("text/plain".toMediaTypeOrNull())
+                val lokasiPart = textPart(lokasi)
+                val penceramahPart = textPart(penceramah)
+                val deskripsiPart = textPart(deskripsi)
+                val statusPart = status.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                val fotoPart = fotoFile?.let {
+                    val requestFile = it.asRequestBody("image/*".toMediaTypeOrNull())
+                    MultipartBody.Part.createFormData(
+                        "foto_kegiatan",
+                        it.name,
+                        requestFile
+                    )
+                }
+
+                repository.createKegiatanMultipart(
+                    idUser = idUserPart,
+                    namaKegiatan = namaPart,
+                    tanggalKegiatan = tanggalPart,
+                    lokasi = lokasiPart,
+                    penceramah = penceramahPart,
+                    deskripsi = deskripsiPart,
+                    statusKegiatan = statusPart,
+                    foto = fotoPart
+                ) { isSuccess, message ->
                     if (isSuccess) loadKegiatan()
                     onResult(isSuccess, message)
                 }
+
             } catch (e: Exception) {
-                Log.e(TAG, "createKegiatan exception: ${e.message}")
-                onResult(false, "Terjadi error: ${e.message}")
+                Log.e(TAG, "createKegiatanMultipart error: ${e.message}")
+                onResult(false, "Gagal menyimpan kegiatan")
             }
         }
     }

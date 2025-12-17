@@ -33,6 +33,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tbimaan.R
+import com.example.tbimaan.model.UserSession
 import com.example.tbimaan.network.ApiClient
 import com.example.tbimaan.network.LoginRequest
 import com.example.tbimaan.network.LoginResponse
@@ -54,9 +55,10 @@ fun SignInScreen(
     val lightGray = Color(0xFFF5F5F5)
 
     Box(modifier = Modifier.fillMaxSize()) {
+
         Image(
             painter = painterResource(id = R.drawable.background),
-            contentDescription = "Background",
+            contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
@@ -69,6 +71,7 @@ fun SignInScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+
             Spacer(modifier = Modifier.height(180.dp))
 
             Card(
@@ -82,22 +85,24 @@ fun SignInScreen(
                         .padding(top = 80.dp, start = 24.dp, end = 24.dp, bottom = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+
                     Text(
                         text = "Sign In",
                         fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        fontWeight = FontWeight.Bold
                     )
+
                     Spacer(modifier = Modifier.height(8.dp))
+
                     Text(
                         text = "Menjaga amanah dan privasi dengan penuh keimanan",
                         fontSize = 14.sp,
-                        color = Color.Gray,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        color = Color.Gray
                     )
+
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // ===== Email =====
+                    // ===== EMAIL =====
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
@@ -113,9 +118,10 @@ fun SignInScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         singleLine = true
                     )
+
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // ===== Password =====
+                    // ===== PASSWORD =====
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
@@ -129,60 +135,96 @@ fun SignInScreen(
                             focusedContainerColor = lightGray
                         ),
                         visualTransformation = if (isPasswordVisible)
-                            VisualTransformation.None else PasswordVisualTransformation(),
+                            VisualTransformation.None
+                        else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         singleLine = true,
                         trailingIcon = {
-                            val image = if (isPasswordVisible) Icons.Filled.Visibility
-                            else Icons.Filled.VisibilityOff
                             IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                                Icon(imageVector = image, contentDescription = null)
+                                Icon(
+                                    imageVector = if (isPasswordVisible)
+                                        Icons.Filled.Visibility
+                                    else Icons.Filled.VisibilityOff,
+                                    contentDescription = null
+                                )
                             }
                         }
                     )
+
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // ===== Tombol Sign In =====
+                    // ===== BUTTON SIGN IN =====
                     Button(
-                        onClick = {
-                            // Validasi sederhana
-                            if (email.isBlank() || password.isBlank()) {
-                                Toast.makeText(context, "Email dan password wajib diisi", Toast.LENGTH_SHORT).show()
-                                return@Button
-                            }
-
-                            // Buat request login
-                            val request = LoginRequest(email = email, password = password)
-                            Log.d("SignIn", "Request: $request")
-
-                            ApiClient.instance.loginUser(request)
-                                .enqueue(object : Callback<LoginResponse> {
-                                    override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
-                                        Log.d("SignIn", "HTTP ${response.code()} body=${response.body()}")
-                                        if (response.isSuccessful && response.body()?.message == "Login berhasil") {
-                                            // berhasil
-                                            val user = response.body()?.user
-                                            Toast.makeText(context, "Selamat datang ${user?.nama_masjid}", Toast.LENGTH_SHORT).show()
-                                            onSignInClick()
-                                        } else {
-                                            // tampilkan pesan error dari server jika ada
-                                            val err = try { response.errorBody()?.string() } catch (e: Exception) { null }
-                                            Log.e("SignIn", "Login gagal: code=${response.code()} err=$err")
-                                            Toast.makeText(context, "Email atau password salah", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-
-                                    override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
-                                        Log.e("SignIn", "onFailure: ${t.message}", t)
-                                        Toast.makeText(context, "Gagal koneksi ke server: ${t.message}", Toast.LENGTH_LONG).show()
-                                    }
-                                })
-                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
                         shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(containerColor = primaryBlue)
+                        colors = ButtonDefaults.buttonColors(containerColor = primaryBlue),
+                        onClick = {
+
+                            if (email.isBlank() || password.isBlank()) {
+                                Toast.makeText(
+                                    context,
+                                    "Email dan password wajib diisi",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@Button
+                            }
+
+                            val request = LoginRequest(email, password)
+
+                            ApiClient.instance.loginUser(request)
+                                .enqueue(object : Callback<LoginResponse> {
+
+                                    override fun onResponse(
+                                        call: Call<LoginResponse>,
+                                        response: Response<LoginResponse>
+                                    ) {
+                                        if (response.isSuccessful &&
+                                            response.body()?.message == "Login berhasil"
+                                        ) {
+                                            val user = response.body()?.user
+
+                                            // ================== FIX UTAMA ==================
+                                            UserSession.idUser = user?.id_user
+                                            UserSession.namaMasjid = user?.nama_masjid
+                                            UserSession.email = user?.email
+                                            UserSession.alamat = user?.alamat
+
+                                            Log.d(
+                                                "USER_SESSION",
+                                                "idUser=${UserSession.idUser}"
+                                            )
+                                            // ================== END FIX ===================
+
+                                            Toast.makeText(
+                                                context,
+                                                "Selamat datang ${user?.nama_masjid}",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+
+                                            onSignInClick()
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                "Email atau password salah",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+
+                                    override fun onFailure(
+                                        call: Call<LoginResponse>,
+                                        t: Throwable
+                                    ) {
+                                        Toast.makeText(
+                                            context,
+                                            "Gagal koneksi: ${t.message}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                })
+                        }
                     ) {
                         Text("Sign In", fontSize = 16.sp, color = Color.White)
                     }
@@ -209,11 +251,12 @@ fun SignInScreen(
             Spacer(modifier = Modifier.height(40.dp))
         }
 
+        // ===== LOGO =====
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 150.dp)
-                .shadow(elevation = 8.dp, shape = RoundedCornerShape(50))
+                .shadow(8.dp, RoundedCornerShape(50))
                 .size(110.dp)
                 .clip(RoundedCornerShape(50))
                 .background(Color.White),
@@ -221,7 +264,7 @@ fun SignInScreen(
         ) {
             Image(
                 painter = painterResource(id = R.drawable.logo_imaan),
-                contentDescription = "Logo IMAAN",
+                contentDescription = null,
                 modifier = Modifier.size(70.dp)
             )
         }

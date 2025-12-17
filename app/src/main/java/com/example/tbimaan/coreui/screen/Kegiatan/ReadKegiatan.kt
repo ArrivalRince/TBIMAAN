@@ -1,5 +1,6 @@
 package com.example.tbimaan.coreui.screen.Kegiatan
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -9,27 +10,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.tbimaan.R
 import com.example.tbimaan.coreui.components.AddFAB
@@ -41,19 +39,17 @@ import com.example.tbimaan.network.KegiatanDto
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
-// UI data class
-data class Kegiatan(
-    val idKegiatan: Int,
+// ================= UI MODEL =================
+data class KegiatanUi(
+    val id: Int,
     val nama: String,
     val tanggal: String,
     val lokasi: String,
     val penceramah: String,
     val deskripsi: String,
     val status: String,
-    val fotoUrl: String? // full URL or null
+    val fotoUrl: String?
 )
 
 @Composable
@@ -63,100 +59,83 @@ fun ReadKegiatanScreen(
     onAddClick: () -> Unit,
     onEditClick: (String) -> Unit
 ) {
-    var kegiatanList by remember { mutableStateOf<List<Kegiatan>>(emptyList()) }
+    var list by remember { mutableStateOf<List<KegiatanUi>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
 
-    // Fetch data once when screen appears
+    // ================= LOAD DATA =================
     LaunchedEffect(Unit) {
-        isLoading = true
-        errorMessage = null
-
-        try {
-            ApiClient.instance.getKegiatan().enqueue(object : Callback<List<KegiatanDto>> {
-                override fun onResponse(call: Call<List<KegiatanDto>>, response: Response<List<KegiatanDto>>) {
+        ApiClient.instance.getKegiatan()
+            .enqueue(object : Callback<List<KegiatanDto>> {
+                override fun onResponse(
+                    call: Call<List<KegiatanDto>>,
+                    response: Response<List<KegiatanDto>>
+                ) {
                     if (response.isSuccessful) {
-                        val body = response.body() ?: emptyList()
-                        val mapped = body.mapNotNull { dto ->
-                            // handle null id
+                        list = response.body().orEmpty().mapNotNull { dto ->
                             val id = dto.id_kegiatan ?: return@mapNotNull null
 
-                            // Build foto URL: if foto_kegiatan looks like full URL keep it,
-                            // otherwise prefix with BASE_URL (if available)
-                            val rawFoto = dto.foto_kegiatan
-                            val fotoFull = when {
-                                rawFoto.isNullOrBlank() -> null
-                                rawFoto.startsWith("http", ignoreCase = true) -> rawFoto
-                                else -> "${ApiClient.BASE_URL.removeSuffix("/")}/uploads/$rawFoto"
+                            val foto = dto.foto_kegiatan?.let {
+                                when {
+                                    it.startsWith("http", true) -> it
+                                    it.startsWith("/") ->
+                                        ApiClient.BASE_URL.removeSuffix("/") + it
+                                    else ->
+                                        ApiClient.BASE_URL.removeSuffix("/") + "/uploads/$it"
+                                }
                             }
 
-                            Kegiatan(
-                                idKegiatan = id,
-                                nama = dto.nama_kegiatan ?: "Tanpa Nama",
-                                tanggal = dto.tanggal_kegiatan ?: "-",
-                                lokasi = dto.lokasi ?: "-",
-                                penceramah = dto.penceramah ?: "-",
+                            KegiatanUi(
+                                id = id,
+                                nama = dto.nama_kegiatan ?: "",
+                                tanggal = dto.tanggal_kegiatan ?: "",
+                                lokasi = dto.lokasi ?: "",
+                                penceramah = dto.penceramah ?: "",
                                 deskripsi = dto.deskripsi ?: "",
                                 status = dto.status_kegiatan ?: "Akan Datang",
-                                fotoUrl = fotoFull
+                                fotoUrl = foto
                             )
                         }
-                        kegiatanList = mapped
+                        isLoading = false
                     } else {
-                        val err = response.errorBody()?.string()
-                        Log.e("ReadKegiatanScreen", "getKegiatan failed: ${response.code()} - $err")
-                        errorMessage = "Gagal memuat data (Kode ${response.code()})"
+                        error = "Gagal memuat data"
+                        isLoading = false
                     }
-                    isLoading = false
                 }
 
                 override fun onFailure(call: Call<List<KegiatanDto>>, t: Throwable) {
-                    Log.e("ReadKegiatanScreen", "getKegiatan failure: ${t.message}")
-                    errorMessage = "Koneksi gagal: ${t.message}"
+                    Log.e("ReadKegiatan", t.message ?: "error")
+                    error = "Koneksi gagal"
                     isLoading = false
                 }
             })
-        } catch (e: Exception) {
-            errorMessage = e.message ?: "Terjadi kesalahan"
-            isLoading = false
-        }
     }
 
-    // Search state
-    var searchQuery by remember { mutableStateOf("") }
-    val filteredList = kegiatanList.filter {
-        it.nama.contains(searchQuery, ignoreCase = true)
-    }
+    // ================= SEARCH =================
+    var query by remember { mutableStateOf("") }
+    val filtered = list.filter { it.nama.contains(query, ignoreCase = true) }
 
+    // ================= UI =================
     Scaffold(
-        floatingActionButton = {
-            AddFAB(onClick = onAddClick)
-        },
-        floatingActionButtonPosition = FabPosition.End,
+        floatingActionButton = { AddFAB(onClick = onAddClick) },
         bottomBar = {
-            KegiatanBottomAppBar(
-                onNavigate = onNavigate,
-                currentRoute = KEGIATAN_GRAPH_ROUTE
-            )
+            BottomBar(onNavigate, KEGIATAN_GRAPH_ROUTE)
         }
-    ) { innerPadding ->
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(padding)
                 .background(Color(0xFFF9F9F9))
         ) {
-            // Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-            ) {
+
+            // HEADER
+            Box(Modifier.fillMaxWidth().height(180.dp)) {
                 Image(
-                    painter = painterResource(id = R.drawable.masjid),
-                    contentDescription = "Header Background",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    painter = painterResource(R.drawable.masjid),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
                 BackButtonOnImage(
                     onClick = { navController.navigateUp() },
@@ -164,105 +143,67 @@ fun ReadKegiatanScreen(
                 )
             }
 
-            // Title
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp)
-            ) {
-                Text(
-                    text = "DAFTAR KEGIATAN",
-                    color = Color(0xFF1E5B8A),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Divider(
-                    color = Color(0xFFE0E0E0),
-                    thickness = 1.dp,
-                    modifier = Modifier.width(180.dp)
-                )
-            }
+            Text(
+                "DAFTAR KEGIATAN",
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = Color(0xFF1E5B8A)
+            )
 
-            // Search bar
             OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
+                value = query,
+                onValueChange = { query = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = 20.dp),
                 placeholder = { Text("Cari kegiatan...") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search Icon"
-                    )
-                },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
                 shape = RoundedCornerShape(24.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedBorderColor = Color(0xFF1E5B8A),
-                    unfocusedBorderColor = Color.LightGray
-                ),
                 singleLine = true
             )
 
-            // Content area: loading / error / list
+            Spacer(Modifier.height(8.dp))
+
             when {
                 isLoading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(Modifier.fillMaxSize(), Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
 
-                errorMessage != null -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Error: $errorMessage",
-                            color = Color.Red,
-                            textAlign = TextAlign.Center
-                        )
+                error != null -> {
+                    Box(Modifier.fillMaxSize(), Alignment.Center) {
+                        Text(error!!, color = Color.Red)
                     }
                 }
 
-                filteredList.isEmpty() -> {
+                filtered.isEmpty() -> {
                     Text(
-                        text = "Tidak ada kegiatan ditemukan.",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 40.dp),
-                        textAlign = TextAlign.Center,
-                        color = Color.Gray
+                        "Tidak ada kegiatan",
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        textAlign = TextAlign.Center
                     )
                 }
 
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                    ) {
-                        items(filteredList) { kegiatan ->
-                            KegiatanCard(kegiatan = kegiatan) {
-                                val namaEnc = URLEncoder.encode(kegiatan.nama, StandardCharsets.UTF_8.toString())
-                                val tanggalEnc = URLEncoder.encode(kegiatan.tanggal, StandardCharsets.UTF_8.toString())
-                                val lokasiEnc = URLEncoder.encode(kegiatan.lokasi, StandardCharsets.UTF_8.toString())
-                                val pjEnc = URLEncoder.encode(kegiatan.penceramah, StandardCharsets.UTF_8.toString())
-                                val deskripsiEnc = URLEncoder.encode(kegiatan.deskripsi, StandardCharsets.UTF_8.toString())
-                                val statusEnc = URLEncoder.encode(kegiatan.status, StandardCharsets.UTF_8.toString())
+                    LazyColumn {
+                        items(filtered) { kegiatan ->
+                            KegiatanCard(kegiatan) {
 
-                                navController.navigate(
-                                    "update_kegiatan/${kegiatan.idKegiatan}/$namaEnc/$tanggalEnc/$lokasiEnc/$pjEnc/$deskripsiEnc/$statusEnc"
-                                )
+                                val route =
+                                    "update_kegiatan/" +
+                                            kegiatan.id + "/" +
+                                            Uri.encode(kegiatan.nama) + "/" +
+                                            Uri.encode(kegiatan.tanggal) + "/" +
+                                            Uri.encode(kegiatan.lokasi) + "/" +
+                                            Uri.encode(kegiatan.penceramah) + "/" +
+                                            Uri.encode(kegiatan.deskripsi) + "/" +
+                                            Uri.encode(kegiatan.status) + "/" +
+                                            Uri.encode(kegiatan.fotoUrl ?: "")
+
+                                navController.navigate(route)
                             }
                         }
                     }
@@ -272,160 +213,144 @@ fun ReadKegiatanScreen(
     }
 }
 
+// ================= CARD =================
 @Composable
-fun KegiatanCard(kegiatan: Kegiatan, onEditClick: () -> Unit) {
+fun KegiatanCard(
+    kegiatan: KegiatanUi,
+    onEdit: () -> Unit
+) {
     Card(
         modifier = Modifier
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 6.dp)
-        ) {
-            // Image: use fotoUrl when available, fallback drawable
+        Column {
+
+            // ===== FOTO (lebih kecil) =====
             if (!kegiatan.fotoUrl.isNullOrBlank()) {
                 AsyncImage(
                     model = kegiatan.fotoUrl,
-                    contentDescription = "Foto Kegiatan",
-                    contentScale = ContentScale.Crop,
+                    contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp)
-                        .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                        .height(150.dp),
+                    contentScale = ContentScale.Crop
                 )
             } else {
                 Image(
-                    painter = painterResource(id = R.drawable.kajianbulanan),
-                    contentDescription = "Foto Kegiatan",
-                    contentScale = ContentScale.Crop,
+                    painter = painterResource(R.drawable.kajianbulanan),
+                    contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp)
-                        .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                        .height(150.dp),
+                    contentScale = ContentScale.Crop
                 )
             }
 
-            // Text content
             Column(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                modifier = Modifier.padding(14.dp)
             ) {
+
+                // ===== NAMA + STATUS =====
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 3.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = kegiatan.nama.uppercase(),
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 20.sp,
-                        color = Color(0xFF1E5B8A),
-                        modifier = Modifier.weight(1f)
+                        text = kegiatan.nama,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        lineHeight = 22.sp,
+                        modifier = Modifier.weight(1f),
+                        color = Color(0xFF1E1E1E)
                     )
 
-                    val (bgColor, textColor) = when (kegiatan.status) {
-                        "Selesai" -> Color(0xFF4CAF50) to Color.White
-                        "Akan Datang" -> Color(0xFFE53935) to Color.White
-                        else -> Color(0xFF9E9E9E) to Color.White
-                    }
+                    Spacer(Modifier.width(8.dp))
+
+                    val isSelesai = kegiatan.status == "Selesai"
 
                     Box(
                         modifier = Modifier
-                            .background(bgColor, shape = RoundedCornerShape(50))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .background(
+                                color = if (isSelesai)
+                                    Color(0xFFE8F5E9)
+                                else
+                                    Color(0xFFFFEBEE),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = kegiatan.status,
-                            color = textColor,
                             fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isSelesai)
+                                Color(0xFF2E7D32)
+                            else
+                                Color(0xFFC62828)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(1.dp))
+                Spacer(Modifier.height(10.dp))
 
-                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    Text("Tanggal: ${kegiatan.tanggal}", fontSize = 12.sp)
-                    Text("Lokasi: ${kegiatan.lokasi}", fontSize = 12.sp)
-                    Text("Penceramah: ${kegiatan.penceramah}", fontSize = 12.sp)
-                    Text(
-                        kegiatan.deskripsi,
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                        maxLines = 3
-                    )
-                }
+                // ===== DETAIL TANPA EMOJI =====
+                Text(
+                    text = "Tanggal: ${kegiatan.tanggal}",
+                    fontSize = 12.sp,
+                    color = Color.DarkGray
+                )
+                Text(
+                    text = "Tempat: ${kegiatan.lokasi}",
+                    fontSize = 12.sp,
+                    color = Color.DarkGray
+                )
+                Text(
+                    text = "Deskripsi: ${kegiatan.deskripsi}",
+                    fontSize = 12.sp,
+                    color = Color.DarkGray,
+                    maxLines = 2
+                )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(Modifier.height(12.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    EditButton(onClick = onEditClick)
-                }
+                EditButton(onClick = onEdit)
             }
         }
     }
 }
 
+// ================= BOTTOM BAR =================
 @Composable
-private fun KegiatanBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
-    Surface(shadowElevation = 8.dp, color = Color(0xFFF8F8F8)) {
+fun BottomBar(onNavigate: (String) -> Unit, currentRoute: String) {
+    Surface {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+            Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround
         ) {
-            BottomNavItem(label = "Home", icon = Icons.Default.Home, isSelected = false, onClick = { onNavigate("home") })
-            BottomNavItem(label = "Inventaris", icon = Icons.Outlined.Inventory, isSelected = false, onClick = { onNavigate("inventaris_graph") })
-            BottomNavItem(label = "Kegiatan", icon = Icons.Default.List, isSelected = true, onClick = { /* current */ })
-            BottomNavItem(label = "Keuangan", icon = Icons.Outlined.Paid, isSelected = false, onClick = { onNavigate("keuangan_graph") })
+            BottomItem("Home", Icons.Default.Home, false) { onNavigate("home") }
+            BottomItem("Inventaris", Icons.Outlined.Inventory, false) { onNavigate("inventaris_graph") }
+            BottomItem("Kegiatan", Icons.Default.List, true) {}
+            BottomItem("Keuangan", Icons.Outlined.Paid, false) { onNavigate("keuangan_graph") }
         }
     }
 }
 
 @Composable
-private fun RowScope.BottomNavItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
-    val contentColor = if (isSelected) Color(0xFF1E5B8A) else Color.Gray
+fun BottomItem(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val color = if (selected) Color(0xFF1E5B8A) else Color.Gray
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .weight(1f)
-            .height(64.dp)
-            .clickable(onClick = onClick)
+        modifier = Modifier.clickable(onClick = onClick)
     ) {
-        Icon(imageVector = icon, contentDescription = label, tint = contentColor)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            color = contentColor,
-            fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            textAlign = TextAlign.Center
-        )
+        Icon(icon, null, tint = color)
+        Text(label, fontSize = 11.sp, color = color)
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ReadKegiatanScreenPreview() {
-    ReadKegiatanScreen(
-        navController = rememberNavController(),
-        onNavigate = {},
-        onAddClick = {},
-        onEditClick = {}
-    )
 }

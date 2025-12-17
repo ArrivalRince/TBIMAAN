@@ -1,17 +1,12 @@
 package com.example.tbimaan.coreui.screen.Kegiatan
 
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -39,8 +34,6 @@ import com.example.tbimaan.coreui.utils.getTempUri
 import com.example.tbimaan.coreui.utils.uriToFile
 import com.example.tbimaan.coreui.viewmodel.KegiatanViewModel
 import com.example.tbimaan.model.UserSession
-import com.example.tbimaan.network.KegiatanDto
-import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Calendar
 
@@ -50,36 +43,39 @@ fun CreateKegiatanScreen(
     navController: NavController,
     viewModel: KegiatanViewModel
 ) {
+    // ================= STATE FORM =================
     var nama by remember { mutableStateOf("") }
-    var tanggal by remember { mutableStateOf("") } // YYYY-MM-DD
+    var tanggal by remember { mutableStateOf("") }
     var lokasi by remember { mutableStateOf("") }
     var penceramah by remember { mutableStateOf("") }
     var deskripsi by remember { mutableStateOf("") }
-
     val status = "Akan Datang"
-    val context = LocalContext.current
 
+    // ================= STATE UI =================
+    val context = LocalContext.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var tempUriHolder by remember { mutableStateOf<Uri?>(null) }
-    var showImageSourceDialog by remember { mutableStateOf(false) }
+    var tempUri by remember { mutableStateOf<Uri?>(null) }
+    var showImageDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
-    val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri -> if (uri != null) imageUri = uri }
+    // ================= IMAGE PICKER =================
+    val galleryLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) imageUri = uri
+        }
 
-    val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { success -> if (success) imageUri = tempUriHolder }
+    val cameraLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success) imageUri = tempUri
+        }
 
+    // ================= DATE PICKER =================
     val calendar = remember { Calendar.getInstance() }
-
-    // Date picker dialog
     val datePickerDialog = remember {
         DatePickerDialog(
             context,
-            { _, year, month, dayOfMonth ->
-                tanggal = "%04d-%02d-%02d".format(year, month + 1, dayOfMonth)
+            { _, y, m, d ->
+                tanggal = "%04d-%02d-%02d".format(y, m + 1, d)
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
@@ -87,27 +83,21 @@ fun CreateKegiatanScreen(
         )
     }
 
-    val scope = rememberCoroutineScope()
-
-    Scaffold(
-        containerColor = Color.White
-    ) { innerPadding ->
+    Scaffold(containerColor = Color.White) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .padding(padding)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Header image + back
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                ) {
+
+                // ================= HEADER =================
+                Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
                     Image(
-                        painter = painterResource(id = R.drawable.masjiddua),
-                        contentDescription = "Header",
+                        painter = painterResource(R.drawable.masjiddua),
+                        contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -117,51 +107,47 @@ fun CreateKegiatanScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
 
                 Text(
                     text = "Tambah Data Kegiatan",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1E5B8A),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
+                    modifier = Modifier.padding(horizontal = 24.dp)
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
 
+                // ================= FORM =================
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
+                    modifier = Modifier.padding(horizontal = 20.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    elevation = CardDefaults.cardElevation(8.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+
                         OutlinedTextField(
                             value = nama,
                             onValueChange = { nama = it },
                             label = { Text("Nama Kegiatan") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         OutlinedTextField(
                             value = tanggal,
                             onValueChange = {},
+                            readOnly = true,
                             label = { Text("Tanggal (YYYY-MM-DD)") },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { datePickerDialog.show() },
-                            readOnly = true,
                             trailingIcon = {
                                 IconButton(onClick = { datePickerDialog.show() }) {
-                                    Icon(Icons.Default.DateRange, contentDescription = "Pilih tanggal")
+                                    Icon(Icons.Default.DateRange, null)
                                 }
                             }
                         )
@@ -170,36 +156,34 @@ fun CreateKegiatanScreen(
                             value = lokasi,
                             onValueChange = { lokasi = it },
                             label = { Text("Lokasi") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         OutlinedTextField(
                             value = penceramah,
                             onValueChange = { penceramah = it },
                             label = { Text("Penceramah") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         OutlinedTextField(
                             value = deskripsi,
                             onValueChange = { deskripsi = it },
-                            label = { Text("Deskripsi Kegiatan") },
+                            label = { Text("Deskripsi") },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(100.dp),
-                            shape = RoundedCornerShape(12.dp)
+                                .height(100.dp)
                         )
 
                         OutlinedTextField(
                             value = status,
                             onValueChange = {},
-                            label = { Text("Status Kegiatan") },
-                            modifier = Modifier.fillMaxWidth(),
-                            readOnly = true
+                            readOnly = true,
+                            label = { Text("Status") },
+                            modifier = Modifier.fillMaxWidth()
                         )
 
+                        // ================= FOTO =================
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -207,24 +191,24 @@ fun CreateKegiatanScreen(
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(Color(0xFFF0F5F9))
                                 .border(1.dp, Color(0xFFDDEEFF), RoundedCornerShape(16.dp))
-                                .clickable { showImageSourceDialog = true },
+                                .clickable { showImageDialog = true },
                             contentAlignment = Alignment.Center
                         ) {
                             if (imageUri == null) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
                                         Icons.Default.AddPhotoAlternate,
-                                        contentDescription = "Tambah Foto",
+                                        contentDescription = null,
                                         tint = Color(0xFF1E5B8A),
                                         modifier = Modifier.size(40.dp)
                                     )
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(Modifier.height(8.dp))
                                     Text("Tambah Foto", color = Color(0xFF1E5B8A))
                                 }
                             } else {
                                 AsyncImage(
                                     model = imageUri,
-                                    contentDescription = "Foto Kegiatan",
+                                    contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
@@ -233,14 +217,16 @@ fun CreateKegiatanScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(Modifier.height(20.dp))
 
+                // ================= BUTTON =================
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+
                     SecondaryButton(
                         text = "Batal",
                         onClick = { navController.popBackStack() },
@@ -249,59 +235,59 @@ fun CreateKegiatanScreen(
 
                     PrimaryButton(
                         text = if (isLoading) "Menyimpan..." else "Simpan",
+                        modifier = Modifier.weight(1f),
                         onClick = {
-                            // Validasi
-                            if (nama.isBlank() || tanggal.isBlank() || lokasi.isBlank() || penceramah.isBlank()) {
-                                Toast.makeText(context, "Harap isi semua field wajib.", Toast.LENGTH_SHORT).show()
-                                return@PrimaryButton
-                            }
-
-                            // Konversi URI ke File (jika ada)
                             val file: File? = try {
                                 imageUri?.let { uriToFile(context, it) }
                             } catch (e: Exception) {
                                 null
                             }
 
-                            if (imageUri != null && (file == null || !file.exists() || file.length() == 0L)) {
-                                Toast.makeText(context, "Foto gagal diproses / tidak valid", Toast.LENGTH_SHORT).show()
+                            if (
+                                nama.isBlank() ||
+                                tanggal.isBlank() ||
+                                lokasi.isBlank() ||
+                                penceramah.isBlank()
+                            ) {
+                                Toast.makeText(
+                                    context,
+                                    "Semua field wajib diisi",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 return@PrimaryButton
                             }
 
-                            // Build KegiatanDto sesuai ApiService kamu
-                            val idUser = UserSession.idUser ?: 1
-                            val kegiatanDto = KegiatanDto(
-                                id_kegiatan = null,
-                                id_user = idUser,
-                                nama_kegiatan = nama,
-                                tanggal_kegiatan = tanggal,
-                                lokasi = lokasi.ifBlank { null },
-                                penceramah = penceramah.ifBlank { null },
-                                deskripsi = deskripsi.ifBlank { null },
-                                status_kegiatan = status,
-                                // karena API saat ini tidak multipart, kirim nama file (atau null)
-                                foto_kegiatan = file?.name
-                            )
-
-                            // Panggil ViewModel untuk menyimpan
-                            isLoading = true
-                            scope.launch {
-                                viewModel.createKegiatan(
-                                    kegiatanDto = kegiatanDto,
-                                    onResult = { success, message ->
-                                        isLoading = false
-                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                        if (success) navController.popBackStack()
-                                    }
-                                )
+                            if (file == null || !file.exists()) {
+                                Toast.makeText(
+                                    context,
+                                    "Foto kegiatan wajib diisi",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@PrimaryButton
                             }
-                        },
-                        modifier = Modifier.weight(1f)
+
+                            isLoading = true
+
+                            viewModel.createKegiatanMultipart(
+                                idUser = UserSession.idUser.toString(),
+                                nama = nama,
+                                tanggal = tanggal,
+                                lokasi = lokasi,
+                                penceramah = penceramah,
+                                deskripsi = deskripsi,
+                                status = status,
+                                fotoFile = file
+                            ) { success, message ->
+                                isLoading = false
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                if (success) navController.popBackStack()
+                            }
+                        }
                     )
                 }
             }
 
-            // Overlay loading
+            // ================= LOADING =================
             if (isLoading) {
                 Box(
                     modifier = Modifier
@@ -313,23 +299,22 @@ fun CreateKegiatanScreen(
                 }
             }
 
-            // Dialog pilih sumber gambar
-            if (showImageSourceDialog) {
+            // ================= DIALOG FOTO =================
+            if (showImageDialog) {
                 AlertDialog(
-                    onDismissRequest = { showImageSourceDialog = false },
+                    onDismissRequest = { showImageDialog = false },
                     title = { Text("Pilih Sumber Foto") },
-                    text = { Text("Pilih dari Galeri atau ambil foto baru?") },
                     confirmButton = {
                         TextButton(onClick = {
-                            showImageSourceDialog = false
+                            showImageDialog = false
                             val tmp = getTempUri(context)
-                            tempUriHolder = tmp
+                            tempUri = tmp
                             cameraLauncher.launch(tmp)
                         }) { Text("Kamera") }
                     },
                     dismissButton = {
                         TextButton(onClick = {
-                            showImageSourceDialog = false
+                            showImageDialog = false
                             galleryLauncher.launch("image/*")
                         }) { Text("Galeri") }
                     }
