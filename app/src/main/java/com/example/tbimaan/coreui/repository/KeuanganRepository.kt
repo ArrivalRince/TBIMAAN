@@ -12,11 +12,11 @@ import retrofit2.Response
 class KeuanganRepository {
 
     // ====== READ ALL ======
-    fun getKeuangan(onResult: (List<KeuanganResponse>?) -> Unit) {
-        ApiClient.instance.getKeuangan().enqueue(object : Callback<List<KeuanganResponse>> {
+    fun getKeuangan(idUser: Int, onResult: (List<KeuanganResponse>?) -> Unit) {
+        ApiClient.instance.getKeuangan(idUser).enqueue(object : Callback<List<KeuanganResponse>> {
             override fun onResponse(call: Call<List<KeuanganResponse>>, response: Response<List<KeuanganResponse>>) {
                 if (response.isSuccessful) {
-                    Log.d("KeuanganRepository", "getKeuangan success: ${response.body()?.size} items")
+                    Log.d("KeuanganRepository", "getKeuangan success for user $idUser: ${response.body()?.size} items")
                     onResult(response.body())
                 } else {
                     Log.e("KeuanganRepository", "getKeuangan error: ${response.code()}")

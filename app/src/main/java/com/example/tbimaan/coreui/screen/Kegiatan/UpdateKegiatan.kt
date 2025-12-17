@@ -55,7 +55,7 @@ fun UpdateKegiatanScreen(
     namaAwal: String,
     tanggalAwal: String,
     lokasiAwal: String,
-    penceramahAwal: String,
+    penanggungjawabAwal: String,
     deskripsiAwal: String,
     statusAwal: String,
     fotoAwal: String?
@@ -66,7 +66,7 @@ fun UpdateKegiatanScreen(
     var nama by remember { mutableStateOf(namaAwal) }
     var tanggal by remember { mutableStateOf(tanggalAwal) }
     var lokasi by remember { mutableStateOf(lokasiAwal) }
-    var penceramah by remember { mutableStateOf(penceramahAwal) }
+    var penanggungjawab by remember { mutableStateOf(penanggungjawabAwal) }
     var deskripsi by remember { mutableStateOf(deskripsiAwal) }
     var status by remember { mutableStateOf(statusAwal) }
     var statusExpanded by remember { mutableStateOf(false) }
@@ -187,9 +187,9 @@ fun UpdateKegiatanScreen(
                         )
 
                         OutlinedTextField(
-                            value = penceramah,
-                            onValueChange = { penceramah = it },
-                            label = { Text("Penceramah") },
+                            value = penanggungjawab,
+                            onValueChange = { penanggungjawab = it },
+                            label = { Text("Penanggungjawab") },
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -310,7 +310,7 @@ fun UpdateKegiatanScreen(
                                 nama.isBlank() ||
                                 tanggal.isBlank() ||
                                 lokasi.isBlank() ||
-                                penceramah.isBlank()
+                                penanggungjawab.isBlank()
                             ) return@PrimaryButton
 
                             isLoading = true
@@ -334,7 +334,7 @@ fun UpdateKegiatanScreen(
                                 namaKegiatan = text(nama),
                                 tanggalKegiatan = text(tanggal),
                                 lokasi = lokasi.takeIf { it.isNotBlank() }?.let { text(it) },
-                                penceramah = penceramah.takeIf { it.isNotBlank() }?.let { text(it) },
+                                penanggungjawab = penanggungjawab.takeIf { it.isNotBlank() }?.let { text(it) },
                                 deskripsi = deskripsi.takeIf { it.isNotBlank() }?.let { text(it) },
                                 statusKegiatan = text(status),
                                 foto_kegiatan = fotoPart

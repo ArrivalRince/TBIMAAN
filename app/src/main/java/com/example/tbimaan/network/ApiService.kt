@@ -5,11 +5,20 @@ import com.example.tbimaan.model.KeuanganResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Call
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.Multipart
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Part
+import retrofit2.http.Path
+import retrofit2.http.Query // <-- TAMBAHKAN BARIS INI
 
-/* =====================================================
- * AUTH MODELS
- * ===================================================== */
+
+/** ---------------------------
+ *  AUTH MODELS
+ *  -------------------------- */
 data class RegisterRequest(
     val nama_masjid: String,
     val email: String,
@@ -39,9 +48,9 @@ data class LoginResponse(
     val user: UserData?
 )
 
-/* =====================================================
- * KEGIATAN MODEL
- * ===================================================== */
+/** ---------------------------
+ *  KEGIATAN MODELS
+ *  -------------------------- */
 data class KegiatanDto(
     val id_kegiatan: Int? = null,
     val id_user: Int,
@@ -49,31 +58,28 @@ data class KegiatanDto(
     val tanggal_kegiatan: String,
     val waktu_kegiatan: String? = null,
     val lokasi: String? = null,
-    val penceramah: String? = null,
+    val penanggungjawab: String? = null,
     val deskripsi: String? = null,
     val status_kegiatan: String? = null,
     val foto_kegiatan: String? = null
 )
 
-/* =====================================================
- * API SERVICE
- * ===================================================== */
+/**
+ * Interface Retrofit yang mendefinisikan semua endpoint API.
+ */
 interface ApiService {
 
-    /* =========================
-     * AUTH
-     * ========================= */
+    // ========== ENDPOINT AUTENTIKASI ==========
     @POST("api/auth/register")
     fun registerUser(@Body request: RegisterRequest): Call<RegisterResponse>
 
     @POST("api/auth/login")
     fun loginUser(@Body request: LoginRequest): Call<LoginResponse>
 
-    /* =========================
-     * KEUANGAN
-     * ========================= */
+    // ========== ENDPOINT KEUANGAN ==========
     @GET("api/keuangan")
-    fun getKeuangan(): Call<List<KeuanganResponse>>
+    fun getKeuangan(@Query("id_user") idUser: Int): Call<List<KeuanganResponse>>
+    // =====================================================
 
     @GET("api/keuangan/{id}")
     fun getKeuanganById(@Path("id") id: String): Call<KeuanganResponse>
@@ -81,9 +87,9 @@ interface ApiService {
     @Multipart
     @POST("api/keuangan")
     fun createKeuangan(
-        @Part("id_user") idUser: RequestBody,
+        @Part("id_user") id_user: RequestBody,
         @Part("keterangan") keterangan: RequestBody,
-        @Part("tipe_transaksi") tipeTransaksi: RequestBody,
+        @Part("tipe_transaksi") tipe_transaksi: RequestBody,
         @Part("tanggal") tanggal: RequestBody,
         @Part("jumlah") jumlah: RequestBody,
         @Part bukti_transaksi: MultipartBody.Part
@@ -94,7 +100,7 @@ interface ApiService {
     fun updateKeuangan(
         @Path("id") id: String,
         @Part("keterangan") keterangan: RequestBody,
-        @Part("tipe_transaksi") tipeTransaksi: RequestBody,
+        @Part("tipe_transaksi") tipe_transaksi: RequestBody,
         @Part("tanggal") tanggal: RequestBody,
         @Part("jumlah") jumlah: RequestBody,
         @Part bukti_transaksi: MultipartBody.Part? = null
@@ -103,15 +109,19 @@ interface ApiService {
     @DELETE("api/keuangan/{id}")
     fun deleteKeuangan(@Path("id") id: String): Call<Void>
 
-    /* =========================
-     * INVENTARIS
-     * ========================= */
+    // =================================================================
+    // === PERBAIKAN ENDPOINT INVENTARIS: DISELARASKAN DENGAN EXPRESS ===
+    // =================================================================
+
+    // READ All Inventaris
     @GET("api/inventaris")
     fun getInventaris(): Call<List<InventarisResponse>>
 
+    // READ Inventaris by ID
     @GET("api/inventaris/{id}")
     fun getInventarisById(@Path("id") id: String): Call<InventarisResponse>
 
+    // CREATE Inventaris
     @Multipart
     @POST("api/inventaris")
     fun createInventaris(
@@ -123,6 +133,11 @@ interface ApiService {
         @Part foto_barang: MultipartBody.Part
     ): Call<InventarisResponse>
 
+    // DELETE Inventaris
+    @DELETE("api/inventaris/{id}")
+    fun deleteInventaris(@Path("id") id: String): Call<Void>
+
+    // UPDATE Inventaris
     @Multipart
     @PUT("api/inventaris/{id}")
     fun updateInventaris(
@@ -131,15 +146,12 @@ interface ApiService {
         @Part("kondisi") kondisi: RequestBody,
         @Part("jumlah") jumlah: RequestBody,
         @Part("tanggal") tanggal: RequestBody,
-        @Part foto_barang: MultipartBody.Part? = null
+        @Part foto_barang: MultipartBody.Part?
     ): Call<InventarisResponse>
 
-    @DELETE("api/inventaris/{id}")
-    fun deleteInventaris(@Path("id") id: String): Call<Void>
+    // ========== ENDPOINT KEGIATAN (DITAMBAHKAN) ==========
+    // Note: disesuaikan dengan base path 'api/kegiatan' agar konsisten dengan endpoint lain
 
-    /* =========================
-     * KEGIATAN (JSON)
-     * ========================= */
     @GET("api/kegiatan")
     fun getKegiatan(): Call<List<KegiatanDto>>
 
@@ -168,7 +180,7 @@ interface ApiService {
         @Part("nama_kegiatan") namaKegiatan: RequestBody,
         @Part("tanggal_kegiatan") tanggalKegiatan: RequestBody,
         @Part("lokasi") lokasi: RequestBody? = null,
-        @Part("penceramah") penceramah: RequestBody? = null,
+        @Part("penanggungjawab") penanggungjawab: RequestBody? = null,
         @Part("deskripsi") deskripsi: RequestBody? = null,
         @Part("status_kegiatan") statusKegiatan: RequestBody? = null,
         @Part foto_kegiatan: MultipartBody.Part? = null
@@ -184,7 +196,7 @@ interface ApiService {
         @Part("nama_kegiatan") namaKegiatan: RequestBody,
         @Part("tanggal_kegiatan") tanggalKegiatan: RequestBody,
         @Part("lokasi") lokasi: RequestBody? = null,
-        @Part("penceramah") penceramah: RequestBody? = null,
+        @Part("penanggungjawab") penanggungjawab: RequestBody? = null,
         @Part("deskripsi") deskripsi: RequestBody? = null,
         @Part("status_kegiatan") statusKegiatan: RequestBody? = null,
 

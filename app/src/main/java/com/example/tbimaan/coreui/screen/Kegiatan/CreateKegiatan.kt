@@ -47,7 +47,7 @@ fun CreateKegiatanScreen(
     var nama by remember { mutableStateOf("") }
     var tanggal by remember { mutableStateOf("") }
     var lokasi by remember { mutableStateOf("") }
-    var penceramah by remember { mutableStateOf("") }
+    var penanggungjawab by remember { mutableStateOf("") }
     var deskripsi by remember { mutableStateOf("") }
     val status = "Akan Datang"
 
@@ -160,9 +160,9 @@ fun CreateKegiatanScreen(
                         )
 
                         OutlinedTextField(
-                            value = penceramah,
-                            onValueChange = { penceramah = it },
-                            label = { Text("Penceramah") },
+                            value = penanggungjawab,
+                            onValueChange = { penanggungjawab = it },
+                            label = { Text("Penanggungjawab") },
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -247,7 +247,7 @@ fun CreateKegiatanScreen(
                                 nama.isBlank() ||
                                 tanggal.isBlank() ||
                                 lokasi.isBlank() ||
-                                penceramah.isBlank()
+                                penanggungjawab.isBlank()
                             ) {
                                 Toast.makeText(
                                     context,
@@ -273,7 +273,7 @@ fun CreateKegiatanScreen(
                                 nama = nama,
                                 tanggal = tanggal,
                                 lokasi = lokasi,
-                                penceramah = penceramah,
+                                penanggungjawab = penanggungjawab,
                                 deskripsi = deskripsi,
                                 status = status,
                                 fotoFile = file

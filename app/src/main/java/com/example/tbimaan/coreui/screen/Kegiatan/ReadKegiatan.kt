@@ -46,7 +46,7 @@ data class KegiatanUi(
     val nama: String,
     val tanggal: String,
     val lokasi: String,
-    val penceramah: String,
+    val penanggungjawab: String,
     val deskripsi: String,
     val status: String,
     val fotoUrl: String?
@@ -90,7 +90,7 @@ fun ReadKegiatanScreen(
                                 nama = dto.nama_kegiatan ?: "",
                                 tanggal = dto.tanggal_kegiatan ?: "",
                                 lokasi = dto.lokasi ?: "",
-                                penceramah = dto.penceramah ?: "",
+                                penanggungjawab = dto.penanggungjawab ?: "",
                                 deskripsi = dto.deskripsi ?: "",
                                 status = dto.status_kegiatan ?: "Akan Datang",
                                 fotoUrl = foto
@@ -198,7 +198,7 @@ fun ReadKegiatanScreen(
                                             Uri.encode(kegiatan.nama) + "/" +
                                             Uri.encode(kegiatan.tanggal) + "/" +
                                             Uri.encode(kegiatan.lokasi) + "/" +
-                                            Uri.encode(kegiatan.penceramah) + "/" +
+                                            Uri.encode(kegiatan.penanggungjawab) + "/" +
                                             Uri.encode(kegiatan.deskripsi) + "/" +
                                             Uri.encode(kegiatan.status) + "/" +
                                             Uri.encode(kegiatan.fotoUrl ?: "")

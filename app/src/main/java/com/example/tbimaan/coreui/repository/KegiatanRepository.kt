@@ -73,7 +73,7 @@ class KegiatanRepository {
         namaKegiatan: RequestBody,
         tanggalKegiatan: RequestBody,
         lokasi: RequestBody?,
-        penceramah: RequestBody?,
+        penanggungjawab: RequestBody?,
         deskripsi: RequestBody?,
         statusKegiatan: RequestBody,
         foto: MultipartBody.Part?,
@@ -84,7 +84,7 @@ class KegiatanRepository {
             namaKegiatan = namaKegiatan,
             tanggalKegiatan = tanggalKegiatan,
             lokasi = lokasi,
-            penceramah = penceramah,
+            penanggungjawab = penanggungjawab,
             deskripsi = deskripsi,
             statusKegiatan = statusKegiatan,
             foto_kegiatan = foto

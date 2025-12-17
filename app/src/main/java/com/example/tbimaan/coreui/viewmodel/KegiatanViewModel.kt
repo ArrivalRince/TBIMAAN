@@ -24,7 +24,7 @@ data class KegiatanEntry(
     val tanggal: String,
     val waktu: String?,
     val lokasi: String?,
-    val penceramah: String?,
+    val penanggungjawab: String?,
     val deskripsi: String?,
     val status: String?,
     val fotoUrl: String?
@@ -83,7 +83,7 @@ class KegiatanViewModel : ViewModel() {
         nama: String,
         tanggal: String,
         lokasi: String?,
-        penceramah: String?,
+        penanggungjawab: String?,
         deskripsi: String?,
         status: String,
         fotoFile: File?,
@@ -101,7 +101,7 @@ class KegiatanViewModel : ViewModel() {
                 val namaPart = nama.toRequestBody("text/plain".toMediaTypeOrNull())
                 val tanggalPart = tanggal.toRequestBody("text/plain".toMediaTypeOrNull())
                 val lokasiPart = textPart(lokasi)
-                val penceramahPart = textPart(penceramah)
+                val penanggungjawabPart = textPart(penanggungjawab)
                 val deskripsiPart = textPart(deskripsi)
                 val statusPart = status.toRequestBody("text/plain".toMediaTypeOrNull())
 
@@ -119,7 +119,7 @@ class KegiatanViewModel : ViewModel() {
                     namaKegiatan = namaPart,
                     tanggalKegiatan = tanggalPart,
                     lokasi = lokasiPart,
-                    penceramah = penceramahPart,
+                    penanggungjawab = penanggungjawabPart,
                     deskripsi = deskripsiPart,
                     statusKegiatan = statusPart,
                     foto = fotoPart
@@ -197,7 +197,7 @@ class KegiatanViewModel : ViewModel() {
             tanggal = tanggalFormatted,
             waktu = this.waktu_kegiatan,
             lokasi = this.lokasi,
-            penceramah = this.penceramah,
+            penanggungjawab = this.penanggungjawab,
             deskripsi = this.deskripsi,
             status = this.status_kegiatan,
             fotoUrl = foto

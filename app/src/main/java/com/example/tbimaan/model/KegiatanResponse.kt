@@ -22,8 +22,8 @@ data class KegiatanResponse(
     @SerializedName("lokasi")
     val lokasi: String?,
 
-    @SerializedName("penceramah")
-    val penceramah: String?,
+    @SerializedName("penanggungjawab")
+    val penanggungjawab: String?,
 
     @SerializedName("deskripsi")
     val deskripsi: String?,

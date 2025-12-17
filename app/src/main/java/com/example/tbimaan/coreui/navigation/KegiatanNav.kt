@@ -57,13 +57,13 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
         // UPDATE KEGIATAN
         // =======================
         composable(
-            route = "update_kegiatan/{idKegiatan}/{nama}/{tanggal}/{lokasi}/{penceramah}/{deskripsi}/{status}/{foto}",
+            route = "update_kegiatan/{idKegiatan}/{nama}/{tanggal}/{lokasi}/{penanggungjawab}/{deskripsi}/{status}/{foto}",
             arguments = listOf(
                 navArgument("idKegiatan") { type = NavType.IntType },
                 navArgument("nama") { type = NavType.StringType },
                 navArgument("tanggal") { type = NavType.StringType },
                 navArgument("lokasi") { type = NavType.StringType },
-                navArgument("penceramah") { type = NavType.StringType },
+                navArgument("penanggungjawab") { type = NavType.StringType },
                 navArgument("deskripsi") { type = NavType.StringType },
                 navArgument("status") { type = NavType.StringType },
                 navArgument("foto") {
@@ -83,7 +83,7 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
                 namaAwal = args.getString("nama").orEmpty(),
                 tanggalAwal = args.getString("tanggal").orEmpty(),
                 lokasiAwal = args.getString("lokasi").orEmpty(),
-                penceramahAwal = args.getString("penceramah").orEmpty(),
+                penanggungjawabAwal = args.getString("penanggungjawab").orEmpty(),
                 deskripsiAwal = args.getString("deskripsi").orEmpty(),
                 statusAwal = args.getString("status").orEmpty(),
                 fotoAwal = args.getString("foto")

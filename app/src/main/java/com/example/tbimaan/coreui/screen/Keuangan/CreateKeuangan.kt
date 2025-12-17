@@ -193,7 +193,8 @@ fun CreateKeuanganScreen(
                     value = keterangan,
                     onValueChange = { keterangan = it },
                     label = { Text("Keterangan") },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), // Menambahkan padding
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 24.dp), // Menambahkan padding
                     shape = RoundedCornerShape(16.dp)
                 )
 
@@ -201,7 +202,8 @@ fun CreateKeuanganScreen(
                     value = jumlah,
                     onValueChange = { jumlah = it },
                     label = { Text("Jumlah (contoh: 50000)") },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), // Menambahkan padding
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 24.dp), // Menambahkan padding
                     shape = RoundedCornerShape(16.dp)
                 )
 
@@ -240,7 +242,8 @@ fun CreateKeuanganScreen(
                 ExposedDropdownMenuBox(
                     expanded = isTipeExpanded,
                     onExpandedChange = { isTipeExpanded = !isTipeExpanded },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp) // Menambahkan padding
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 24.dp) // Menambahkan padding
                 ) {
                     OutlinedTextField(
                         value = selectedTipe,
@@ -251,9 +254,13 @@ fun CreateKeuanganScreen(
                         modifier = Modifier.menuAnchor().fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp)
                     )
-                    ExposedDropdownMenu(expanded = isTipeExpanded, onDismissRequest = { isTipeExpanded = false }) {
+                    ExposedDropdownMenu(
+                        expanded = isTipeExpanded,
+                        onDismissRequest = { isTipeExpanded = false }) {
                         options.forEach { option ->
-                            DropdownMenuItem(text = { Text(option) }, onClick = { selectedTipe = option; isTipeExpanded = false })
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = { selectedTipe = option; isTipeExpanded = false })
                         }
                     }
                 }
@@ -271,12 +278,26 @@ fun CreateKeuanganScreen(
                 ) {
                     if (imageUri == null) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = "Upload Icon", tint = Color(0xFF1E5B8A).copy(alpha = 0.8f), modifier = Modifier.size(40.dp))
+                            Icon(
+                                imageVector = Icons.Default.AddPhotoAlternate,
+                                contentDescription = "Upload Icon",
+                                tint = Color(0xFF1E5B8A).copy(alpha = 0.8f),
+                                modifier = Modifier.size(40.dp)
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = "Upload Bukti", color = Color(0xFF1E5B8A), fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = "Upload Bukti",
+                                color = Color(0xFF1E5B8A),
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     } else {
-                        AsyncImage(model = imageUri, contentDescription = "Bukti Terpilih", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        AsyncImage(
+                            model = imageUri,
+                            contentDescription = "Bukti Terpilih",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -285,19 +306,27 @@ fun CreateKeuanganScreen(
                     onClick = {
                         val buktiUri = imageUri
                         if (keterangan.isBlank() || jumlah.isBlank() || tanggal.isBlank() || buktiUri == null) {
-                            Toast.makeText(context, "Semua field dan foto bukti wajib diisi", Toast.LENGTH_LONG).show()
+                            Toast.makeText(
+                                context,
+                                "Semua field dan foto bukti wajib diisi",
+                                Toast.LENGTH_LONG
+                            ).show()
                             return@Button
                         }
+
                         val file = uriToFile(context, buktiUri)
                         if (file == null) {
-                            Toast.makeText(context, "Gagal memproses file gambar", Toast.LENGTH_LONG).show()
+                            Toast.makeText(
+                                context,
+                                "Gagal memproses file gambar",
+                                Toast.LENGTH_LONG
+                            ).show()
                             return@Button
                         }
 
                         isLoading = true
 
                         viewModel.createKeuangan(
-                            idUser = "1", // Ganti dengan ID user yang sedang login nanti
                             keterangan = keterangan,
                             tipeTransaksi = selectedTipe,
                             tanggal = tanggal,
@@ -314,16 +343,16 @@ fun CreateKeuanganScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp) // Menambahkan padding
-                        .height(56.dp),
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5BC0DE))
+                        .padding(horizontal = 24.dp),
+                    enabled = !isLoading
                 ) {
-                    Text("SIMPAN", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    Text(
+                        text = if (isLoading) "Menyimpan..." else "Simpan",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
             }
-
             if (isLoading) {
                 Box(
                     modifier = Modifier

@@ -5,6 +5,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.tbimaan.model.UserSession // <-- TAMBAHKAN BARIS INI
 import com.example.tbimaan.coreui.repository.KeuanganRepository
 import com.example.tbimaan.coreui.screen.Keuangan.PemasukanEntry
 import com.example.tbimaan.model.KeuanganResponse
@@ -41,46 +42,57 @@ class KeuanganViewModel : ViewModel() {
     // --- FUNGSI-FUNGSI CRUD ---
 
     fun loadData() {
+        // 1. Ambil ID pengguna yang sedang login dari UserSession.
+        val currentUserIdAny = UserSession.idUser // Tipe masih 'Any?'
+
+        // 2. Validasi dan Konversi Tipe (Casting)
+        val currentUserId = currentUserIdAny as? Int // <-- Lakukan konversi ke Int? (nullable Int)
+
+        if (currentUserId == null) {
+            _errorMessage.value = "Sesi pengguna tidak ditemukan. Silakan login kembali."
+            Log.e(TAG, "loadData: User ID is null or not an Integer. Cannot fetch data.")
+            _isLoading.value = false // Pastikan loading berhenti
+            return
+        }
+        // Jika sedang loading, jangan panggil lagi
+        if (_isLoading.value) return
+
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = ""
-            Log.d(TAG, "loadData: Starting to fetch all keuangan data")
-
-            repository.getKeuangan { responseList ->
+            Log.d(TAG, "loadData: Starting to fetch data for user ID: $currentUserId")
+// 3. Teruskan ID pengguna ke repository.
+            repository.getKeuangan(currentUserId) { responseList ->
                 try {
-                    if (responseList == null) {
-                        _errorMessage.value = "Gagal mengambil data dari server."
-                        _isLoading.value = false
-                        Log.e(TAG, "loadData: Response is NULL")
-                        return@getKeuangan
-                    }
+                    if (responseList != null) {
+                        Log.d(TAG, "loadData: Received ${responseList.size} items for user ID $currentUserId")
 
-                    Log.d(TAG, "loadData: Received ${responseList.size} items from server")
-
-                    // Ubah setiap item dari server menjadi PemasukanEntry
-                    val entries = responseList.mapNotNull { response ->
-                        try {
-                            response.toPemasukanEntry()
-                        } catch (e: Exception) {
-                            Log.e(TAG, "loadData: Error converting item ${response.idTransaksi}: ${e.message}")
-                            null
+                        val entries = responseList.mapNotNull { response ->
+                            try {
+                                response.toPemasukanEntry()
+                            } catch (e: Exception) {
+                                Log.e(TAG, "loadData: Error converting item ${response.idTransaksi}: ${e.message}")
+                                null
+                            }
                         }
+                        _pemasukanList.value = entries.filter { it.tipeTransaksi.equals("pemasukan", ignoreCase = true) }
+                        _pengeluaranList.value = entries.filter { it.tipeTransaksi.equals("pengeluaran", ignoreCase = true) }
+
+                        Log.d(TAG, "loadData: Pemasukan=${_pemasukanList.value.size}, Pengeluaran=${_pengeluaranList.value.size}")
+                    } else {
+                        _errorMessage.value = "Gagal mengambil data dari server."
+                        Log.e(TAG, "loadData: Response is NULL for user ID $currentUserId")
                     }
-
-                    _pemasukanList.value = entries.filter { it.tipeTransaksi.equals("pemasukan", ignoreCase = true) }
-                    _pengeluaranList.value = entries.filter { it.tipeTransaksi.equals("pengeluaran", ignoreCase = true) }
-
-                    Log.d(TAG, "loadData: Pemasukan=${_pemasukanList.value.size}, Pengeluaran=${_pengeluaranList.value.size}")
-                    _isLoading.value = false
                 } catch (e: Exception) {
                     Log.e(TAG, "loadData: Exception in callback - ${e.message}")
                     _errorMessage.value = "Error: ${e.message}"
+                } finally {
+                    // Pastikan loading selalu berhenti
                     _isLoading.value = false
                 }
             }
         }
     }
-
     // ================== PERBAIKAN KRUSIAL: LOGGING DEBUG LENGKAP ==================
     /**
      * Mengambil SATU data keuangan dari server berdasarkan ID-nya.
@@ -126,9 +138,11 @@ class KeuanganViewModel : ViewModel() {
     }
     // ==================================================================================
 
-
+    // =======================================================================
+// ===           PERBAIKAN UTAMA DAN FINAL ADA DI FUNGSI INI           ===
+// =======================================================================
     fun createKeuangan(
-        idUser: String,
+        // idUser dihapus dari parameter, karena akan kita ambil dari UserSession
         keterangan: String,
         tipeTransaksi: String,
         tanggal: String,
@@ -136,11 +150,20 @@ class KeuanganViewModel : ViewModel() {
         buktiFile: File,
         onResult: (isSuccess: Boolean, message: String) -> Unit
     ) {
+        // 1. Ambil ID Pengguna dari UserSession
+        val currentUserId = UserSession.idUser as? Int
+        if (currentUserId == null) {
+            onResult(false, "Sesi pengguna tidak valid, tidak bisa menyimpan data.")
+            Log.e(TAG, "createKeuangan: Gagal karena idUser null.")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                Log.d(TAG, "createKeuangan: Starting with keterangan=$keterangan, tipe=$tipeTransaksi")
+                Log.d(TAG, "createKeuangan: Starting with keterangan=$keterangan for user ID=$currentUserId")
 
-                val idUserBody = idUser.toRequestBody("text/plain".toMediaTypeOrNull())
+                // 2. Gunakan currentUserId yang sudah valid (sebagai String)
+                val idUserBody = currentUserId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                 val keteranganBody = keterangan.toRequestBody("text/plain".toMediaTypeOrNull())
                 val tipeTransaksiBody = tipeTransaksi.lowercase().toRequestBody("text/plain".toMediaTypeOrNull())
                 val tanggalBody = tanggal.toRequestBody("text/plain".toMediaTypeOrNull())
@@ -150,7 +173,7 @@ class KeuanganViewModel : ViewModel() {
 
                 repository.createKeuangan(idUserBody, keteranganBody, tipeTransaksiBody, tanggalBody, jumlahBody, buktiPart) { isSuccess, message ->
                     Log.d(TAG, "createKeuangan: Result - isSuccess=$isSuccess, message=$message")
-                    if (isSuccess) loadData()
+                    if (isSuccess) loadData() // Muat ulang data jika berhasil
                     onResult(isSuccess, message)
                 }
             } catch (e: Exception) {
@@ -159,6 +182,7 @@ class KeuanganViewModel : ViewModel() {
             }
         }
     }
+// =======================================================================
 
     fun updateKeuangan(
         id: String,
