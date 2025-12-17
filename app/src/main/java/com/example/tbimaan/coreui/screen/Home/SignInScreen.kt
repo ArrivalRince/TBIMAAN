@@ -3,7 +3,6 @@ package com.example.tbimaan.coreui.screen.Home
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,8 +18,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -31,11 +28,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tbimaan.R
-import com.example.tbimaan.model.UserSession // <-- Pastikan import ini ada
+import com.example.tbimaan.model.SessionManager
 import com.example.tbimaan.network.ApiClient
 import com.example.tbimaan.network.LoginRequest
 import com.example.tbimaan.network.LoginResponse
@@ -51,11 +49,14 @@ fun SignInScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) } // State untuk loading indicator
+    var isLoading by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
 
     val primaryBlue = Color(0xFF007BFF)
     val lightGray = Color(0xFFF5F5F5)
+    val linkColor = Color(0xFF0062CC)
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -97,7 +98,7 @@ fun SignInScreen(
                         text = "Menjaga amanah dan privasi dengan penuh keimanan",
                         fontSize = 14.sp,
                         color = Color.Gray,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(32.dp))
 
@@ -149,44 +150,37 @@ fun SignInScreen(
                                 return@Button
                             }
 
-                            isLoading = true // Mulai loading
+                            isLoading = true
                             val request = LoginRequest(email = email, password = password)
                             Log.d("SignIn", "Request: $request")
 
                             ApiClient.instance.loginUser(request)
                                 .enqueue(object : Callback<LoginResponse> {
                                     override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
-                                        isLoading = false // Hentikan loading
+                                        isLoading = false
                                         Log.d("SignIn", "HTTP ${response.code()} body=${response.body()}")
 
                                         if (response.isSuccessful) {
                                             val loginResponse = response.body()
                                             val user = loginResponse?.user
 
-                                            // =================================================================
-                                            // ===            PERBAIKAN UTAMA DAN FINAL ADA DI SINI          ===
-                                            // =================================================================
                                             if (user != null) {
-                                                // 1. SIMPAN SEMUA DATA PENGGUNA KE UserSession
-                                                UserSession.idUser = user.id_user
-                                                UserSession.namaMasjid = user.nama_masjid
-                                                UserSession.email = user.email
-                                                UserSession.alamat = user.alamat
+                                                // Pemanggilan ini sekarang aman karena SessionManager sudah diubah
+                                                sessionManager.createLoginSession(
+                                                    idUser = user.id_user,
+                                                    namaMasjid = user.nama_masjid,
+                                                    email = user.email,
+                                                    alamat = user.alamat // <-- Mengirim nilai null sekarang tidak akan crash
+                                                )
 
-                                                Log.d("SignInScreen", "Login Berhasil. User ID: ${user.id_user} disimpan ke session.")
+                                                Log.d("SignInScreen", "Login Berhasil. Sesi untuk User ID: ${user.id_user} telah disimpan.")
                                                 Toast.makeText(context, "Selamat datang ${user.nama_masjid}", Toast.LENGTH_SHORT).show()
-
-                                                // 2. BARU PINDAH HALAMAN SETELAH DATA DISIMPAN
                                                 onSignInClick()
                                             } else {
-                                                // Handle jika respons sukses tapi data user tidak ada (kasus aneh)
                                                 Toast.makeText(context, "Login gagal: Data pengguna tidak valid.", Toast.LENGTH_LONG).show()
                                                 Log.e("SignIn", "Login sukses tapi data user null.")
                                             }
-                                            // =================================================================
-
                                         } else {
-                                            // Handle jika login tidak berhasil (error 401, 500, dll.)
                                             val errorMsg = when (response.code()) {
                                                 401 -> "Email atau password salah."
                                                 else -> "Login gagal (Error: ${response.code()})"
@@ -197,7 +191,7 @@ fun SignInScreen(
                                     }
 
                                     override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
-                                        isLoading = false // Hentikan loading
+                                        isLoading = false
                                         Log.e("SignIn", "onFailure: ${t.message}", t)
                                         Toast.makeText(context, "Gagal koneksi ke server: ${t.message}", Toast.LENGTH_LONG).show()
                                     }
@@ -208,7 +202,7 @@ fun SignInScreen(
                             .height(50.dp),
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(containerColor = primaryBlue),
-                        enabled = !isLoading // Tombol dinonaktifkan saat loading
+                        enabled = !isLoading
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
@@ -217,42 +211,41 @@ fun SignInScreen(
                                 modifier = Modifier.size(24.dp)
                             )
                         } else {
-                            Text("Sign In", fontSize = 16.sp, color = Color.White)
+                            Text("Sign In", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
+                    // =======================================================================
+                    // ===                 PERBAIKAN UTAMA DAN FINAL ADA DI SINI           ===
+                    // =======================================================================
                     Text(
+                        modifier = Modifier.clickable(onClick = onSignUpClick),
                         text = buildAnnotatedString {
-                            append("Tidak punya akun? ")
-                            withStyle(style = SpanStyle(color = primaryBlue, fontWeight = FontWeight.Bold)) {
+                            withStyle(style = SpanStyle(color = Color.Gray)) {
+                                append("Tidak punya akun? ")
+                            }
+                            withStyle(style = SpanStyle(color = linkColor, fontWeight = FontWeight.Bold)) {
+                                // Mengubah "Daftar" menjadi "Sign Up"
                                 append("Sign Up")
                             }
-                        },
-                        modifier = Modifier.clickable { onSignUpClick() }
+                        }
                     )
+                    // =======================================================================
                 }
             }
-
-            Spacer(modifier = Modifier.height(40.dp))
+            // Spacer di akhir untuk memastikan bisa di-scroll
+            Spacer(modifier = Modifier.height(32.dp))
         }
 
-        Box(
+        Image(
+            painter = painterResource(id = R.drawable.logo_imaan),
+            contentDescription = "App Logo",
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 150.dp)
-                .shadow(elevation = 8.dp, shape = RoundedCornerShape(50))
-                .size(110.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color.White),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.logo_imaan),
-                contentDescription = "Logo IMAAN",
-                modifier = Modifier.size(70.dp)
-            )
-        }
+                .padding(top = 100.dp)
+                .size(120.dp)
+        )
     }
 }

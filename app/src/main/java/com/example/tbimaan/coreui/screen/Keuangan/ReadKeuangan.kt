@@ -6,20 +6,55 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material.icons.outlined.Paid
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -37,18 +72,21 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.tbimaan.R
 import com.example.tbimaan.coreui.components.BackButtonOnImage
+import com.example.tbimaan.coreui.navigation.HOME_GRAPH_ROUTE
+import com.example.tbimaan.coreui.navigation.INVENTARIS_GRAPH_ROUTE
+import com.example.tbimaan.coreui.navigation.KEGIATAN_GRAPH_ROUTE
 import com.example.tbimaan.coreui.navigation.KEUANGAN_GRAPH_ROUTE
 import com.example.tbimaan.coreui.viewmodel.KeuanganViewModel
+import com.example.tbimaan.model.SessionManager
 import java.text.NumberFormat
 import java.util.Locale
 
-// Data class (sudah benar)
 data class PemasukanEntry(
     val id: String,
     val keterangan: String,
     val jumlah: Double,
     val tanggal: String,
-    val namaBukti: String = "LihatBukti",
+    val namaBukti: String = "Lihat Bukti",
     val tipeTransaksi: String = "",
     val urlBukti: String = ""
 )
@@ -60,6 +98,8 @@ fun ReadKeuanganScreen(
     viewModel: KeuanganViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+
     val pemasukanList by viewModel.pemasukanList
     val pengeluaranList by viewModel.pengeluaranList
     val isLoading by viewModel.isLoading
@@ -70,7 +110,7 @@ fun ReadKeuanganScreen(
     var itemToShowProof by remember { mutableStateOf<PemasukanEntry?>(null) }
 
     LaunchedEffect(key1 = Unit) {
-        viewModel.loadData()
+        viewModel.loadData(sessionManager.idUser)
     }
 
     LaunchedEffect(errorMessage) {
@@ -92,16 +132,14 @@ fun ReadKeuanganScreen(
                 }
             },
             bottomBar = {
-                // BottomAppBar dipindah ke sini dari CreateKeuanganScreen untuk konsistensi
                 KeuanganBottomAppBar(
                     onNavigate = { route ->
                         navController.navigate(route) {
-                            // Logic navigasi agar tidak menumpuk
                             popUpTo(navController.graph.startDestinationId)
                             launchSingleTop = true
                         }
                     },
-                    currentRoute = KEUANGAN_GRAPH_ROUTE // Menandakan kita di modul Keuangan
+                    currentRoute = KEUANGAN_GRAPH_ROUTE
                 )
             }
         ) { innerPadding ->
@@ -154,11 +192,10 @@ fun ReadKeuanganScreen(
                             isPemasukan = false
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(80.dp)) } // Spacer di akhir list
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
             }
         }
-
         if (isLoading && (pemasukanList.isNotEmpty() || pengeluaranList.isNotEmpty())) {
             Box(
                 modifier = Modifier
@@ -176,7 +213,7 @@ fun ReadKeuanganScreen(
         DeleteConfirmationDialog(
             itemName = itemToDelete?.keterangan ?: "",
             onConfirm = {
-                itemToDelete?.let { viewModel.deleteKeuangan(it.id) }
+                itemToDelete?.let { viewModel.deleteKeuangan(it.id, sessionManager.idUser) }
                 showDeleteDialog = false
                 itemToDelete = null
             },
@@ -195,7 +232,33 @@ fun ReadKeuanganScreen(
     }
 }
 
-// ================== PERBAIKAN UTAMA DAN FINAL ADA DI SINI ==================
+@Composable
+fun HeaderContent(navController: NavController) {
+    Box(Modifier.fillMaxWidth().height(180.dp)) {
+        Image(
+            painter = painterResource(R.drawable.masjid),
+            contentDescription = "Header",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        BackButtonOnImage(
+            onClick = { navController.navigate(HOME_GRAPH_ROUTE) { popUpTo(0) } },
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+    }
+}
+
+@Composable
+fun SectionTitle(title: String, color: Color) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        color = color,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp)
+    )
+}
+
 @Composable
 fun KeuanganTable(
     data: List<PemasukanEntry>,
@@ -225,8 +288,7 @@ fun KeuanganTable(
                 .border(1.dp, borderColor, RoundedCornerShape(8.dp))
                 .horizontalScroll(rememberScrollState())
         ) {
-            Column(modifier = Modifier.width(700.dp)) { // Lebar tabel
-                // Header
+            Column(modifier = Modifier.width(700.dp)) {
                 Row(
                     Modifier.background(tableHeaderColor).padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -236,9 +298,8 @@ fun KeuanganTable(
                     TableCell(text = "Jumlah", weight = 1.5f, title = true, alignment = TextAlign.End)
                     TableCell(text = "Tanggal", weight = 1.5f, title = true)
                     TableCell(text = "Bukti", weight = 1f, title = true)
-                    TableCell(text = "Aksi", weight = 1.5f, title = true) // Judul kolom untuk tombol
+                    TableCell(text = "Aksi", weight = 1.5f, title = true)
                 }
-                // Body
                 data.forEachIndexed { index, item ->
                     Row(
                         modifier = Modifier.background(if (index % 2 == 0) evenRowColor else oddRowColor),
@@ -251,48 +312,22 @@ fun KeuanganTable(
                         }
                         TableCell(text = formatter.format(item.jumlah), weight = 1.5f, alignment = TextAlign.End)
                         TableCell(text = item.tanggal, weight = 1.5f)
-
-                        // Sel untuk Tombol "Lihat Bukti"
                         TableCellClickable(
                             text = item.namaBukti,
                             weight = 1f,
                             onClick = { onShowProofClick(item) }
                         )
-
-
-// ... di dalam KeuanganTable, di dalam Row ...
-
-// --- INI ADALAH SEL UNTUK TOMBOL AKSI (EDIT & HAPUS) ---
                         Row(
                             modifier = Modifier.weight(1.5f).padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
-                            // Tombol Edit yang sesungguhnya
-                            IconButton(
-                                onClick = { onEditClick(item.id) },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Edit",
-                                    tint = Color(0xFFFFA000) // Warna oranye
-                                )
+                            IconButton(onClick = { onEditClick(item.id) }, modifier = Modifier.size(36.dp)) {
+                                Icon(imageVector = Icons.Default.Edit, "Edit", tint = Color(0xFFFFA000))
                             }
-
-                            // ================== INI BAGIAN YANG SEBELUMNYA HILANG ==================
-                            // Tombol Hapus yang sesungguhnya
-                            IconButton(
-                                onClick = { onDeleteClick(item) },
-                                modifier = Modifier.size(36.dp) // <-- Baris yang hilang
-                            ) { // <-- Kurung kurawal yang hilang
-                                Icon( // <-- Icon yang hilang
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Hapus",
-                                    tint = Color(0xFFD32F2F) // Warna merah
-                                )
-                            } // <-- Kurung kurawal yang hilang
-                            // =======================================================================
+                            IconButton(onClick = { onDeleteClick(item) }, modifier = Modifier.size(36.dp)) {
+                                Icon(imageVector = Icons.Default.Delete, "Hapus", tint = Color.Red)
+                            }
                         }
                     }
                 }
@@ -301,97 +336,48 @@ fun KeuanganTable(
     }
 }
 
-// Composable untuk sel teks biasa
 @Composable
-private fun RowScope.TableCell(
-    text: String,
-    weight: Float,
-    alignment: TextAlign = TextAlign.Center,
-    title: Boolean = false
-) {
+fun RowScope.TableCell(text: String, weight: Float, alignment: TextAlign = TextAlign.Start, title: Boolean = false) {
     Text(
         text = text,
-        modifier = Modifier
-            .weight(weight)
-            .padding(horizontal = 8.dp, vertical = 12.dp),
+        modifier = Modifier.weight(weight).padding(horizontal = 8.dp, vertical = 10.dp),
         fontWeight = if (title) FontWeight.Bold else FontWeight.Normal,
-        fontSize = if (title) 14.sp else 13.sp,
         textAlign = alignment,
+        overflow = TextOverflow.Ellipsis,
         maxLines = 1,
-        overflow = TextOverflow.Ellipsis
+        fontSize = 12.sp
     )
 }
 
-// Composable BARU untuk sel teks yang bisa diklik (untuk "Lihat Bukti")
 @Composable
-private fun RowScope.TableCellClickable(
-    text: String,
-    weight: Float,
-    onClick: () -> Unit
-) {
+fun RowScope.TableCellClickable(text: String, weight: Float, onClick: () -> Unit) {
     Text(
         text = text,
         modifier = Modifier
             .weight(weight)
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 12.dp),
-        fontWeight = FontWeight.Normal,
-        fontSize = 13.sp,
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        fontWeight = FontWeight.Medium,
         textAlign = TextAlign.Center,
-        color = Color(0xFF1E88E5), // Warna biru untuk menandakan bisa diklik
         textDecoration = TextDecoration.Underline,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis
-    )
-}
-
-// Composable lain (Header, Dialog, dll.) tidak ada perubahan dan sudah benar.
-@Composable
-private fun SectionTitle(title: String, color: Color) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        color = color,
-        modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
+        color = Color.Blue,
+        fontSize = 12.sp
     )
 }
 
 @Composable
-private fun HeaderContent(navController: NavController) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(180.dp)
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.masjid),
-            contentDescription = "Masjid Background",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        BackButtonOnImage(
-            onClick = { navController.navigate("home") { popUpTo(0) } },
-            modifier = Modifier.align(Alignment.TopStart)
-        )
-    }
-}
-
-@Composable
-private fun DeleteConfirmationDialog(itemName: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun DeleteConfirmationDialog(itemName: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Konfirmasi Hapus", fontWeight = FontWeight.Bold) },
+        title = { Text("Konfirmasi Hapus") },
         text = { Text("Apakah Anda yakin ingin menghapus data \"$itemName\"?") },
         confirmButton = {
-            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD9534F))) {
-                Text("Hapus", color = Color.White)
+            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)) {
+                Text("Hapus")
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("Batal")
-            }
+            OutlinedButton(onClick = onDismiss) { Text("Batal") }
         }
     )
 }
@@ -400,23 +386,18 @@ private fun DeleteConfirmationDialog(itemName: String, onConfirm: () -> Unit, on
 fun ProofImageDialog(imageUrl: String, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.fillMaxWidth().height(400.dp)
+            modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = "Bukti Transaksi",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                    placeholder = painterResource(id = R.drawable.logo_imaan),
-                    error = painterResource(id = R.drawable.logo_imaan)
+                    modifier = Modifier.fillMaxWidth().height(300.dp),
+                    contentScale = ContentScale.Fit
                 )
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(Color.Black.copy(alpha = 0.5f), shape = CircleShape)
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = "Tutup", tint = Color.White)
+                Button(onClick = onDismiss, modifier = Modifier.padding(16.dp)) {
+                    Text("Tutup")
                 }
             }
         }
@@ -424,31 +405,42 @@ fun ProofImageDialog(imageUrl: String, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun KeuanganBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String) {
-    Surface(shadowElevation = 8.dp, color = Color.White) {
-        Row(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BottomNavItem(label = "Home", icon = Icons.Default.Home, isSelected = false, onClick = { onNavigate("home") })
-            BottomNavItem(label = "Inventaris", icon = Icons.Outlined.Inventory, isSelected = false, onClick = { onNavigate("inventaris_graph") })
-            BottomNavItem(label = "Kegiatan", icon = Icons.Default.List, isSelected = false, onClick = { onNavigate("kegiatan_graph") })
-            BottomNavItem(label = "Keuangan", icon = Icons.Outlined.Paid, isSelected = currentRoute == KEUANGAN_GRAPH_ROUTE, onClick = {})
-        }
-    }
-}
-
-@Composable
-private fun RowScope.BottomNavItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
-    val contentColor = if (isSelected) Color(0xFF1E5B8A) else Color.Gray
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier.weight(1f).height(64.dp).clickable(onClick = onClick)
+fun KeuanganBottomAppBar(onNavigate: (String) -> Unit, currentRoute: String?) {
+    BottomAppBar(
+        containerColor = Color.White,
+        tonalElevation = 8.dp
     ) {
-        Icon(imageVector = icon, contentDescription = label, tint = contentColor)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, color = contentColor, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, textAlign = TextAlign.Center)
+        val navItems = listOf(
+            "Home" to HOME_GRAPH_ROUTE,
+            "Inventaris" to INVENTARIS_GRAPH_ROUTE,
+            "Kegiatan" to KEGIATAN_GRAPH_ROUTE,
+            "Keuangan" to KEUANGAN_GRAPH_ROUTE
+        )
+        navItems.forEach { (label, route) ->
+            val isSelected = currentRoute == route
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = { if (!isSelected) onNavigate(route) },
+                icon = {
+                    Icon(
+                        imageVector = when (route) {
+                            HOME_GRAPH_ROUTE -> Icons.Default.Home
+                            INVENTARIS_GRAPH_ROUTE -> Icons.Outlined.Inventory
+                            KEGIATAN_GRAPH_ROUTE -> Icons.Default.List
+                            else -> Icons.Outlined.Paid
+                        },
+                        contentDescription = label
+                    )
+                },
+                label = { Text(label, fontSize = 11.sp) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xFF004AAD),
+                    unselectedIconColor = Color.Gray,
+                    selectedTextColor = Color(0xFF004AAD),
+                    unselectedTextColor = Color.Gray,
+                    indicatorColor = Color(0xFFE3F2FD)
+                )
+            )
+        }
     }
 }

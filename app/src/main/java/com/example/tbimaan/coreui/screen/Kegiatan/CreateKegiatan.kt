@@ -36,6 +36,8 @@ import com.example.tbimaan.coreui.viewmodel.KegiatanViewModel
 import com.example.tbimaan.model.UserSession
 import java.io.File
 import java.util.Calendar
+import com.example.tbimaan.model.SessionManager // <-- GANTI UserSession DENGAN INI
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +59,8 @@ fun CreateKegiatanScreen(
     var tempUri by remember { mutableStateOf<Uri?>(null) }
     var showImageDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    val sessionManager = remember { SessionManager(context) }
+
 
     // ================= IMAGE PICKER =================
     val galleryLauncher =
@@ -237,39 +241,29 @@ fun CreateKegiatanScreen(
                         text = if (isLoading) "Menyimpan..." else "Simpan",
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            val file: File? = try {
-                                imageUri?.let { uriToFile(context, it) }
-                            } catch (e: Exception) {
-                                null
-                            }
+                            val currentUserId = sessionManager.idUser
+                            val file: File? = try { imageUri?.let { uriToFile(context, it) } } catch (e: Exception) { null }
 
-                            if (
-                                nama.isBlank() ||
-                                tanggal.isBlank() ||
-                                lokasi.isBlank() ||
-                                penanggungjawab.isBlank()
-                            ) {
-                                Toast.makeText(
-                                    context,
-                                    "Semua field wajib diisi",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                            // Validasi input
+                            if (currentUserId == null) {
+                                Toast.makeText(context, "Sesi pengguna tidak valid. Silakan login kembali.", Toast.LENGTH_LONG).show()
                                 return@PrimaryButton
                             }
-
+                            if (nama.isBlank() || tanggal.isBlank() || lokasi.isBlank() || penanggungjawab.isBlank()) {
+                                Toast.makeText(context, "Semua field wajib diisi", Toast.LENGTH_SHORT).show()
+                                return@PrimaryButton
+                            }
                             if (file == null || !file.exists()) {
-                                Toast.makeText(
-                                    context,
-                                    "Foto kegiatan wajib diisi",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                Toast.makeText(context, "Foto kegiatan wajib diisi", Toast.LENGTH_SHORT).show()
                                 return@PrimaryButton
                             }
 
                             isLoading = true
 
+
+                            // Kirim ID pengguna yang valid ke ViewModel
                             viewModel.createKegiatanMultipart(
-                                idUser = UserSession.idUser.toString(),
+                                idUser = currentUserId.toString(), // <-- Kirim ID yang benar
                                 nama = nama,
                                 tanggal = tanggal,
                                 lokasi = lokasi,
@@ -279,13 +273,19 @@ fun CreateKegiatanScreen(
                                 fotoFile = file
                             ) { success, message ->
                                 isLoading = false
-                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                if (success) navController.popBackStack()
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                if (success) {
+                                    navController.popBackStack()
+                                }
                             }
+                            // ========================================================
                         }
                     )
                 }
+                Spacer(Modifier.height(32.dp))
             }
+        }
+    }
 
             // ================= LOADING =================
             if (isLoading) {
@@ -321,5 +321,3 @@ fun CreateKegiatanScreen(
                 )
             }
         }
-    }
-}

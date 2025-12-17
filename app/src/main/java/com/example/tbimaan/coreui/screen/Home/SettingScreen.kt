@@ -1,6 +1,5 @@
 package com.example.tbimaan.coreui.screen.Home
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,22 +29,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.tbimaan.R
+import com.example.tbimaan.model.SessionManager
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingScreen(
     navController: NavController
 ) {
-    var searchQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
-
+    // Gunakan SessionManager untuk proses Logout
+    val sessionManager = remember { SessionManager(context) }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val primaryColor = Color(0xFF5A96AB)
@@ -54,20 +53,12 @@ fun SettingScreen(
     val screenBgColor = Color(0xFFF8F9FA)
 
     Scaffold(
-        bottomBar = {
-            BottomNavBar(
-                onInventarisClick = { navController.navigate("inventaris_graph") },
-                onKeuanganClick = { navController.navigate("keuangan_graph") },
-                onKegiatanClick = { navController.navigate("kegiatan_graph") },
-                onHomeClick = { navController.navigate("home") }
-            )
-        },
         containerColor = screenBgColor
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = innerPadding.calculateBottomPadding())
+                .padding(innerPadding)
                 .background(screenBgColor)
         ) {
             Box(
@@ -139,8 +130,31 @@ fun SettingScreen(
                     }
                 }
 
-                Text(text = "Pengaturan", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = titleColor, modifier = Modifier.padding(bottom = 16.dp))
-                OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Cari Pengaturan") }, leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search Icon") }, shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = cardColor, unfocusedContainerColor = cardColor, focusedBorderColor = primaryColor, unfocusedBorderColor = Color.LightGray), singleLine = true)
+                Text(
+                    text = "Pengaturan",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = titleColor,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                // Search Bar tidak perlu diubah, biarkan seperti apa adanya
+                var searchQuery by remember { mutableStateOf("") }
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Cari Pengaturan") },
+                    leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search Icon") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = cardColor,
+                        unfocusedContainerColor = cardColor,
+                        focusedBorderColor = primaryColor,
+                        unfocusedBorderColor = Color.LightGray
+                    ),
+                    singleLine = true
+                )
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Card(
@@ -153,9 +167,7 @@ fun SettingScreen(
                         SettingItem(
                             title = "Profile",
                             icon = Icons.Default.Person,
-                            onClick = {
-                                navController.navigate("profile")
-                            }
+                            onClick = { navController.navigate("profile") }
                         )
 
                         Divider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -163,31 +175,24 @@ fun SettingScreen(
                         SettingItem(
                             title = "Info Aplikasi",
                             icon = Icons.Default.Info,
-                            onClick = {
-                                navController.navigate("info_aplikasi")
-                            }
+                            onClick = { navController.navigate("info_aplikasi") }
                         )
 
                         Divider(modifier = Modifier.padding(horizontal = 16.dp))
 
-                        // =================== PERBAIKAN UTAMA DI SINI ===================
                         SettingItem(
                             title = "Keamanan Akun",
                             icon = Icons.Default.Security,
-                            onClick = {
-                                // Mengubah Toast menjadi navigasi ke halaman keamanan_akun
-                                navController.navigate("keamanan_akun")
-                            }
+                            onClick = { navController.navigate("keamanan_akun") }
                         )
-                        // ===============================================================
 
                         Divider(modifier = Modifier.padding(horizontal = 16.dp))
 
                         SettingItem(
                             title = "Keluar",
                             icon = Icons.AutoMirrored.Filled.Logout,
-                            onClick = { showLogoutDialog = true }
-                        )
+                            onClick = { showLogoutDialog = true },
+                            )
                     }
                 }
             }
@@ -197,8 +202,11 @@ fun SettingScreen(
     if (showLogoutDialog) {
         CustomLogoutDialog(
             onConfirm = {
+                // 1. Hapus sesi dari penyimpanan permanen
+                sessionManager.logoutUser()
                 showLogoutDialog = false
-                navController.navigate("signin") {
+                // 2. Navigasi ke halaman login dan bersihkan semua history
+                navController.navigate("landing") {
                     popUpTo(0) { inclusive = true }
                 }
             },
@@ -209,6 +217,7 @@ fun SettingScreen(
     }
 }
 
+// Fungsi ini tidak perlu diubah
 @Composable
 private fun CustomLogoutDialog(
     onConfirm: () -> Unit,
@@ -281,64 +290,42 @@ private fun CustomLogoutDialog(
                     .offset(y = (-30).dp)) {
                 Box(
                     modifier = Modifier
+                        .shadow(12.dp, CircleShape)
                         .size(60.dp)
                         .clip(CircleShape)
-                        .background(Color.White),
+                        .background(Color(0xFFD9534F)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFFCE4E4)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Logout Icon",
-                            tint = Color(0xFFD9534F),
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = "Logout Icon",
+                        tint = Color.White,
+                        modifier = Modifier.size(30.dp)
+                    )
                 }
             }
         }
     }
 }
 
+// Fungsi ini tidak perlu diubah
 @Composable
-private fun SettingItem(title: String, icon: ImageVector, onClick: () -> Unit) {
+private fun SettingItem(
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    contentColor: Color = LocalContentColor.current
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            tint = Color.Gray,
-            modifier = Modifier.size(28.dp)
-        )
+        Icon(imageVector = icon, contentDescription = title, tint = contentColor)
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = title,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.DarkGray,
-            modifier = Modifier.weight(1f)
-        )
-        Icon(
-            imageVector = Icons.Default.ChevronRight,
-            contentDescription = "Go to $title",
-            tint = Color.Gray
-        )
+        Text(text = title, modifier = Modifier.weight(1f), color = contentColor)
+        Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null, tint = contentColor.copy(alpha = 0.6f))
     }
-}
-
-@Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
-@Composable
-fun SettingScreenPreview() {
-    SettingScreen(navController = rememberNavController())
 }
