@@ -10,105 +10,198 @@ import retrofit2.Callback
 import retrofit2.Response
 
 class InventarisRepository {
-    private val TAG = "InventarisRepository"
 
-    fun getInventaris(onResult: (List<InventarisResponse>?) -> Unit) {
-        ApiClient.instance.getInventaris().enqueue(object : Callback<List<InventarisResponse>> {
-            override fun onResponse(call: Call<List<InventarisResponse>>, response: Response<List<InventarisResponse>>) {
-                if (response.isSuccessful) {
-                    onResult(response.body())
-                } else {
-                    val err = response.errorBody()?.string()
-                    Log.e(TAG, "getInventaris error: ${response.code()} - $err")
+    // ====== READ ALL ======
+    fun getInventaris(idUser: Int, onResult: (List<InventarisResponse>?) -> Unit) {
+        Log.d("InventarisRepository", "Requesting getInventaris for user $idUser")
+        ApiClient.instance.getInventaris(idUser)
+            .enqueue(object : Callback<List<InventarisResponse>> {
+                override fun onResponse(
+                    call: Call<List<InventarisResponse>>,
+                    response: Response<List<InventarisResponse>>
+                ) {
+                    if (response.isSuccessful) {
+                        Log.d(
+                            "InventarisRepository",
+                            "getInventaris success: ${response.body()?.size} items"
+                        )
+                        onResult(response.body())
+                    } else {
+                        Log.e(
+                            "InventarisRepository",
+                            "getInventaris error: ${response.code()}"
+                        )
+                        onResult(null)
+                    }
+                }
+
+                override fun onFailure(call: Call<List<InventarisResponse>>, t: Throwable) {
+                    Log.e(
+                        "InventarisRepository",
+                        "getInventaris failure: ${t.message}"
+                    )
                     onResult(null)
                 }
-            }
-            override fun onFailure(call: Call<List<InventarisResponse>>, t: Throwable) {
-                Log.e(TAG, "getInventaris failure: ${t.message}")
-                onResult(null)
-            }
-        })
+            })
     }
 
+    // ====== READ BY ID ======
     fun getInventarisById(id: String, onResult: (InventarisResponse?) -> Unit) {
-        ApiClient.instance.getInventarisById(id).enqueue(object : Callback<InventarisResponse> {
-            override fun onResponse(call: Call<InventarisResponse>, response: Response<InventarisResponse>) {
-                if (response.isSuccessful) {
-                    onResult(response.body())
-                } else {
-                    val err = response.errorBody()?.string()
-                    Log.e(TAG, "getInventarisById error: ${response.code()} - $err")
+        Log.d("InventarisRepository", "Requesting getInventarisById with id: $id")
+        ApiClient.instance.getInventarisById(id)
+            .enqueue(object : Callback<InventarisResponse> {
+                override fun onResponse(
+                    call: Call<InventarisResponse>,
+                    response: Response<InventarisResponse>
+                ) {
+                    if (response.isSuccessful) {
+                        Log.d(
+                            "InventarisRepository",
+                            "getInventarisById success"
+                        )
+                        onResult(response.body())
+                    } else {
+                        Log.e(
+                            "InventarisRepository",
+                            "getInventarisById error: ${response.code()}"
+                        )
+                        onResult(null)
+                    }
+                }
+
+                override fun onFailure(call: Call<InventarisResponse>, t: Throwable) {
+                    Log.e(
+                        "InventarisRepository",
+                        "getInventarisById failure: ${t.message}"
+                    )
                     onResult(null)
                 }
+            })
+    }
+
+    // ====== CREATE ======
+    fun createInventaris(
+        idUser: RequestBody,
+        namaBarang: RequestBody,
+        kondisi: RequestBody,
+        jumlah: RequestBody,
+        tanggal: RequestBody,
+        foto: MultipartBody.Part,
+        onResult: (isSuccess: Boolean, message: String) -> Unit
+    ) {
+        Log.d("InventarisRepository", "Creating inventaris")
+        ApiClient.instance.createInventaris(
+            idUser,
+            namaBarang,
+            kondisi,
+            jumlah,
+            tanggal,
+            foto
+        ).enqueue(object : Callback<InventarisResponse> {
+            override fun onResponse(
+                call: Call<InventarisResponse>,
+                response: Response<InventarisResponse>
+            ) {
+                if (response.isSuccessful) {
+                    Log.d("InventarisRepository", "createInventaris success")
+                    onResult(true, "Data berhasil disimpan")
+                } else {
+                    Log.e(
+                        "InventarisRepository",
+                        "createInventaris error: ${response.code()}"
+                    )
+                    onResult(
+                        false,
+                        "Gagal menyimpan data (Error: ${response.code()})"
+                    )
+                }
             }
+
             override fun onFailure(call: Call<InventarisResponse>, t: Throwable) {
-                Log.e(TAG, "getInventarisById failure: ${t.message}")
-                onResult(null)
+                Log.e(
+                    "InventarisRepository",
+                    "createInventaris failure: ${t.message}"
+                )
+                onResult(false, "Koneksi ke server gagal: ${t.message}")
             }
         })
     }
 
-    fun createInventaris(
-        idUser: RequestBody, namaBarang: RequestBody, kondisi: RequestBody,
-        jumlah: RequestBody, tanggal: RequestBody, fotoBarang: MultipartBody.Part,
-        onResult: (isSuccess: Boolean, message: String) -> Unit
-    ) {
-        ApiClient.instance.createInventaris(idUser, namaBarang, kondisi, jumlah, tanggal, fotoBarang)
-            .enqueue(object : Callback<InventarisResponse> {
-                override fun onResponse(call: Call<InventarisResponse>, response: Response<InventarisResponse>) {
-                    if (response.isSuccessful) {
-                        onResult(true, "Data inventaris berhasil disimpan")
-                    } else {
-                        val err = response.errorBody()?.string()
-                        Log.e(TAG, "createInventaris failed: ${response.code()} - $err")
-                        onResult(false, "Gagal menyimpan (Error: ${response.code()})")
-                    }
-                }
-                override fun onFailure(call: Call<InventarisResponse>, t: Throwable) {
-                    Log.e(TAG, "createInventaris failure: ${t.message}")
-                    onResult(false, "Koneksi gagal: ${t.message}")
-                }
-            })
-    }
-
+    // ====== UPDATE ======
     fun updateInventaris(
-        id: String, namaBarang: RequestBody, kondisi: RequestBody,
-        jumlah: RequestBody, tanggal: RequestBody, fotoBarang: MultipartBody.Part?,
+        id: String,
+        namaBarang: RequestBody,
+        kondisi: RequestBody,
+        jumlah: RequestBody,
+        tanggal: RequestBody,
+        foto: MultipartBody.Part?,
         onResult: (isSuccess: Boolean, message: String) -> Unit
     ) {
-        ApiClient.instance.updateInventaris(id, namaBarang, kondisi, jumlah, tanggal, fotoBarang)
-            .enqueue(object : Callback<InventarisResponse> {
-                override fun onResponse(call: Call<InventarisResponse>, response: Response<InventarisResponse>) {
-                    if (response.isSuccessful) {
-                        onResult(true, "Data inventaris berhasil diperbarui")
-                    } else {
-                        val err = response.errorBody()?.string()
-                        Log.e(TAG, "updateInventaris failed: ${response.code()} - $err")
-                        onResult(false, "Gagal memperbarui (Error: ${response.code()})")
-                    }
+        Log.d("InventarisRepository", "Updating inventaris with id: $id")
+        ApiClient.instance.updateInventaris(
+            id,
+            namaBarang,
+            kondisi,
+            jumlah,
+            tanggal,
+            foto
+        ).enqueue(object : Callback<InventarisResponse> {
+            override fun onResponse(
+                call: Call<InventarisResponse>,
+                response: Response<InventarisResponse>
+            ) {
+                if (response.isSuccessful) {
+                    Log.d("InventarisRepository", "updateInventaris success")
+                    onResult(true, "Data berhasil diperbarui")
+                } else {
+                    Log.e(
+                        "InventarisRepository",
+                        "updateInventaris error: ${response.code()}"
+                    )
+                    onResult(
+                        false,
+                        "Gagal memperbarui data (Error: ${response.code()})"
+                    )
                 }
-                override fun onFailure(call: Call<InventarisResponse>, t: Throwable) {
-                    Log.e(TAG, "updateInventaris failure: ${t.message}")
-                    onResult(false, "Koneksi gagal: ${t.message}")
-                }
-            })
+            }
+
+            override fun onFailure(call: Call<InventarisResponse>, t: Throwable) {
+                Log.e(
+                    "InventarisRepository",
+                    "updateInventaris failure: ${t.message}"
+                )
+                onResult(false, "Koneksi ke server gagal: ${t.message}")
+            }
+        })
     }
 
     fun deleteInventaris(id: String, onResult: (isSuccess: Boolean, message: String) -> Unit) {
-        ApiClient.instance.deleteInventaris(id).enqueue(object : Callback<Void> {
-            override fun onResponse(call: Call<Void>, response: Response<Void>) {
-                if (response.isSuccessful) {
-                    onResult(true, "Data inventaris berhasil dihapus")
-                } else {
-                    val err = response.errorBody()?.string()
-                    Log.e(TAG, "deleteInventaris failed: ${response.code()} - $err")
-                    onResult(false, "Gagal menghapus (Error: ${response.code()})")
+        Log.d("InventarisRepository", "Deleting inventaris with id: $id")
+        ApiClient.instance.deleteInventaris(id)
+            .enqueue(object : Callback<InventarisResponse> {
+                override fun onResponse(
+                    call: Call<InventarisResponse>,
+                    response: Response<InventarisResponse>
+                ) {
+                    if (response.isSuccessful) {
+                        Log.d("InventarisRepository", "deleteInventaris success")
+                        onResult(true, "Data berhasil dihapus")
+                    } else {
+                        Log.e(
+                            "InventarisRepository",
+                            "deleteInventaris error: ${response.code()}"
+                        )
+                        onResult(false, "Gagal menghapus data (Error: ${response.code()})")
+                    }
                 }
-            }
-            override fun onFailure(call: Call<Void>, t: Throwable) {
-                Log.e(TAG, "deleteInventaris failure: ${t.message}")
-                onResult(false, "Koneksi gagal: ${t.message}")
-            }
-        })
+
+                override fun onFailure(call: Call<InventarisResponse>, t: Throwable) {
+                    Log.e(
+                        "InventarisRepository",
+                        "deleteInventaris failure: ${t.message}"
+                    )
+                    onResult(false, "Koneksi ke server gagal: ${t.message}")
+                }
+            })
     }
 }

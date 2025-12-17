@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material3.AlertDialog
@@ -45,6 +46,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,13 +78,7 @@ import com.example.tbimaan.coreui.navigation.KEGIATAN_GRAPH_ROUTE
 import com.example.tbimaan.coreui.navigation.KEUANGAN_GRAPH_ROUTE
 import com.example.tbimaan.coreui.viewmodel.InventarisEntry
 import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
-
-// =====================================================================
-// ===        PERBAIKAN UTAMA: HAPUS DATA CLASS LOKAL INI          ===
-// =====================================================================
-// Definisi data class lokal yang menyebabkan masalah sudah dihapus dari sini.
-// Kita sekarang menggunakan 'InventarisEntry' yang diimpor dari ViewModel.
-// =====================================================================
+import com.example.tbimaan.model.SessionManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,6 +87,8 @@ fun ReadInventarisScreen(
     viewModel: InventarisViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+
     val inventarisList by viewModel.inventarisList
     val isLoading by viewModel.isLoading
     val errorMessage by viewModel.errorMessage
@@ -97,15 +96,25 @@ fun ReadInventarisScreen(
     var itemToDelete by remember { mutableStateOf<InventarisEntry?>(null) }
     var itemToShowProof by remember { mutableStateOf<InventarisEntry?>(null) }
 
-    // Memuat data saat screen pertama kali dibuka atau saat kembali ke screen ini
-    LaunchedEffect(Unit) {
-        viewModel.loadInventaris()
+    // ✅ tambahan: state pencarian
+    var searchQuery by remember { mutableStateOf("") }
+
+    // ✅ tetap mengikuti VM/Repo yang ada
+    LaunchedEffect(sessionManager.idUser) {
+        viewModel.loadInventaris(sessionManager.idUser)
     }
 
-    // Menampilkan pesan error dari ViewModel
     LaunchedEffect(errorMessage) {
         if (errorMessage.isNotEmpty()) {
             Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // ✅ hasil filter (UI saja)
+    val filteredList = remember(inventarisList, searchQuery) {
+        if (searchQuery.isBlank()) inventarisList
+        else inventarisList.filter {
+            it.namaBarang.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -116,59 +125,75 @@ fun ReadInventarisScreen(
                 containerColor = Color(0xFF004AAD),
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp)
-            ) { Icon(Icons.Default.Add, "Tambah") }
+            ) { Icon(Icons.Default.Add, contentDescription = "Tambah") }
         },
         bottomBar = {
-            // Menggunakan Bottom Nav Bar yang konsisten
             ConsistentBottomNavBar(
                 navController = navController,
                 currentRoute = INVENTARIS_GRAPH_ROUTE
             )
         }
     ) { innerPadding ->
-        // Tampilkan loading indicator di tengah jika list masih kosong
         if (isLoading && inventarisList.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
-            // Tampilkan list data jika sudah ada atau loading selesai
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding) // Gunakan padding dari Scaffold
+                    .padding(innerPadding)
             ) {
                 item { HeaderContent(navController) }
                 item { SectionTitle("Data Inventaris Masjid") }
 
-                // PERBAIKAN: Gunakan `items` untuk efisiensi LazyColumn
-                items(inventarisList, key = { it.id }) { item ->
-                    InventarisCard(
-                        item = item,
-                        onEditClick = { navController.navigate("update_inventaris/${item.id}") },
-                        onDeleteClick = { itemToDelete = item },
-                        onShowProofClick = { itemToShowProof = item }
+                // ✅ tambahan: Search bar di bawah judul
+                item {
+                    SearchBarInventaris(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it }
                     )
                 }
 
-                item { Spacer(Modifier.height(80.dp)) } // Spacer di akhir list
+                if (filteredList.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Data tidak ditemukan.",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    items(filteredList, key = { it.id }) { item ->
+                        InventarisCard(
+                            item = item,
+                            onEditClick = { navController.navigate("update_inventaris/${item.id}") },
+                            onDeleteClick = { itemToDelete = item },
+                            onShowProofClick = { itemToShowProof = item }
+                        )
+                    }
+                }
+
+                item { Spacer(Modifier.height(80.dp)) }
             }
         }
     }
 
-    // Dialog konfirmasi hapus
     itemToDelete?.let { item ->
         DeleteConfirmationDialog(
             itemName = item.namaBarang,
             onConfirm = {
-                viewModel.deleteInventaris(item.id) { _, _ -> }
+                // ✅ tetap mengikuti VM/Repo yang ada
+                viewModel.deleteInventaris(item.id, sessionManager.idUser)
                 itemToDelete = null
             },
             onDismiss = { itemToDelete = null }
         )
     }
 
-    // Dialog untuk menampilkan gambar
     itemToShowProof?.let { item ->
         ProofImageDialog(
             imageUrl = item.urlFoto,
@@ -177,9 +202,35 @@ fun ReadInventarisScreen(
     }
 }
 
-// ----------------------
-// HELPER COMPOSABLES (Kode yang lain tidak dihapus)
-// ----------------------
+// ================= UI Helper =================
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchBarInventaris(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 10.dp)
+            .clip(RoundedCornerShape(14.dp)),
+        placeholder = { Text("Cari Inventaris") },
+        trailingIcon = { Icon(Icons.Default.Search, contentDescription = "Cari") },
+        singleLine = true,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            disabledContainerColor = Color.White,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent
+        )
+    )
+}
 
 @Composable
 fun InventarisCard(
@@ -199,30 +250,32 @@ fun InventarisCard(
             Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Composable untuk menampilkan gambar
             AsyncImage(
-                model = item.urlFoto, // <-- Ini sekarang adalah URL LENGKAP dari ViewModel
+                model = item.urlFoto,
                 contentDescription = "Foto ${item.namaBarang}",
                 modifier = Modifier
                     .size(64.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.LightGray) // Latar belakang jika gambar sedang loading
+                    .background(Color.LightGray)
                     .clickable { onShowProofClick() },
                 contentScale = ContentScale.Crop,
-                placeholder = painterResource(id = R.drawable.logo_imaan), // Gambar saat loading
-                error = painterResource(id = R.drawable.logo_imaan) // Gambar jika terjadi error
+                placeholder = painterResource(id = R.drawable.logo_imaan),
+                error = painterResource(id = R.drawable.logo_imaan)
             )
 
             Spacer(Modifier.width(16.dp))
 
-            // Kolom untuk teks
             Column(Modifier.weight(1f)) {
-                Text(item.namaBarang, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1E5B8A))
+                Text(
+                    item.namaBarang,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color(0xFF1E5B8A)
+                )
                 Text("Jumlah: ${item.jumlah}", color = Color.Gray)
                 Text(item.tanggal, color = Color.Gray, fontSize = 12.sp)
             }
 
-            // Tombol Aksi
             IconButton(onClick = onEditClick) {
                 Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color(0xFFFFA000))
             }
@@ -268,7 +321,10 @@ fun SectionTitle(title: String) {
 fun ConsistentBottomNavBar(navController: NavController, currentRoute: String?) {
     Surface(modifier = Modifier.fillMaxWidth(), shadowElevation = 8.dp, color = Color.White) {
         Row(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -290,7 +346,10 @@ fun ConsistentBottomNavBar(navController: NavController, currentRoute: String?) 
                     isSelected = currentRoute == route,
                     onClick = {
                         if (currentRoute != route) {
-                            navController.navigate(route) { popUpTo(navController.graph.startDestinationId) }
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.startDestinationId)
+                                launchSingleTop = true
+                            }
                         }
                     }
                 )
@@ -300,29 +359,48 @@ fun ConsistentBottomNavBar(navController: NavController, currentRoute: String?) 
 }
 
 @Composable
-fun RowScope.BottomNavBarItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
+fun RowScope.BottomNavBarItem(
+    label: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
     val contentColor = if (isSelected) Color(0xFF1E5B8A) else Color.Gray
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.weight(1f).height(64.dp).clickable(onClick = onClick)
+        modifier = Modifier
+            .weight(1f)
+            .height(64.dp)
+            .clickable(onClick = onClick)
     ) {
         Icon(imageVector = icon, contentDescription = label, tint = contentColor)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, color = contentColor, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, textAlign = TextAlign.Center)
+        Text(
+            text = label,
+            color = contentColor,
+            fontSize = 11.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
 @Composable
-fun DeleteConfirmationDialog(itemName: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun DeleteConfirmationDialog(
+    itemName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Konfirmasi Hapus") },
         text = { Text("Yakin ingin menghapus \"$itemName\"?") },
         confirmButton = {
-            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(Color.Red)) {
-                Text("Hapus")
-            }
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(Color.Red)
+            ) { Text("Hapus") }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) { Text("Batal") }
@@ -332,7 +410,7 @@ fun DeleteConfirmationDialog(itemName: String, onConfirm: () -> Unit, onDismiss:
 
 @Composable
 fun ProofImageDialog(imageUrl: String, onDismiss: () -> Unit) {
-    Dialog(onDismiss) {
+    Dialog(onDismissRequest = onDismiss) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
@@ -343,7 +421,9 @@ fun ProofImageDialog(imageUrl: String, onDismiss: () -> Unit) {
             AsyncImage(
                 model = imageUrl,
                 contentDescription = "Foto Bukti",
-                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
                 contentScale = ContentScale.Fit,
                 placeholder = painterResource(R.drawable.logo_imaan),
                 error = painterResource(R.drawable.logo_imaan)

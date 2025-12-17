@@ -114,12 +114,17 @@ interface ApiService {
     // =================================================================
 
     // READ All Inventaris
+    // 🔹 Ambil semua inventaris berdasarkan id_user
     @GET("api/inventaris")
-    fun getInventaris(): Call<List<InventarisResponse>>
+    fun getInventaris(
+        @Query("id_user") idUser: Int
+    ): Call<List<InventarisResponse>>
 
-    // READ Inventaris by ID
+    // 🔹 Ambil inventaris berdasarkan id_inventaris
     @GET("api/inventaris/{id}")
-    fun getInventarisById(@Path("id") id: String): Call<InventarisResponse>
+    fun getInventarisById(
+        @Path("id") id: String
+    ): Call<InventarisResponse>
 
     // CREATE Inventaris
     @Multipart
@@ -133,9 +138,12 @@ interface ApiService {
         @Part foto_barang: MultipartBody.Part
     ): Call<InventarisResponse>
 
+
     // DELETE Inventaris
     @DELETE("api/inventaris/{id}")
-    fun deleteInventaris(@Path("id") id: String): Call<Void>
+    fun deleteInventaris(
+        @Path("id") id: String
+    ): Call<InventarisResponse>
 
     // UPDATE Inventaris
     @Multipart
@@ -148,6 +156,7 @@ interface ApiService {
         @Part("tanggal") tanggal: RequestBody,
         @Part foto_barang: MultipartBody.Part?
     ): Call<InventarisResponse>
+
 
     // ========== ENDPOINT KEGIATAN (DITAMBAHKAN) ==========
     // Note: disesuaikan dengan base path 'api/kegiatan' agar konsisten dengan endpoint lain

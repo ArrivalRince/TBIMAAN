@@ -58,6 +58,7 @@ import com.example.tbimaan.coreui.components.PrimaryButton
 import com.example.tbimaan.coreui.utils.getTempUri
 import com.example.tbimaan.coreui.utils.uriToFile
 import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
+import com.example.tbimaan.model.SessionManager
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -71,6 +72,7 @@ fun UpdateInventarisScreen(
     viewModel: InventarisViewModel
 ) {
     val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
     val item by viewModel.selectedItem
     val isLoadingInitialData by viewModel.isLoading
 
@@ -218,6 +220,7 @@ fun UpdateInventarisScreen(
                                 isProcessing = true
                                 viewModel.updateInventaris(
                                     id = id,
+                                    currentUserId = sessionManager.idUser, // 🔥 WAJIB
                                     namaBarang = namaBarang,
                                     kondisi = kondisi,
                                     jumlah = jumlahBarang,
@@ -229,6 +232,7 @@ fun UpdateInventarisScreen(
                                         if (isSuccess) navController.popBackStack()
                                     }
                                 )
+
                             },
                             modifier = Modifier.weight(1f)
                         )
