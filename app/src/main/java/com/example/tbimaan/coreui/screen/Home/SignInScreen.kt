@@ -4,7 +4,15 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,9 +20,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +60,18 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
+private fun isGmailAddress(email: String): Boolean {
+    if (email.isBlank()) return false
+    // Memeriksa apakah email diakhiri dengan "@gmail.com" dan tidak hanya "@gmail.com"
+    return email.endsWith("@gmail.com", ignoreCase = true) && email.length > "@gmail.com".length
+}
+
+private fun isPasswordComplex(password: String): Boolean {
+    val passwordPattern = "^(?=.[0-9])(?=.[a-z])(?=.*[A-Z]).{8,}$".toRegex()
+    return password.matches(passwordPattern)
+}
+// =========================================================
+
 @Composable
 fun SignInScreen(
     onSignInClick: () -> Unit,
@@ -56,7 +87,6 @@ fun SignInScreen(
     val primaryBlue = Color(0xFF007BFF)
     val lightGray = Color(0xFFF5F5F5)
     val linkColor = Color(0xFF0062CC)
-
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -145,8 +175,15 @@ fun SignInScreen(
 
                     Button(
                         onClick = {
-                            if (email.isBlank() || password.isBlank()) {
-                                Toast.makeText(context, "Email dan password wajib diisi", Toast.LENGTH_SHORT).show()
+                            // Validasi Email: Harus @gmail.com
+                            if (!isGmailAddress(email)) {
+                                Toast.makeText(context, "Email harus menggunakan @gmail.com", Toast.LENGTH_LONG).show()
+                                return@Button
+                            }
+
+                            // Validasi Password: Harus Kompleks
+                            if (!isPasswordComplex(password)) {
+                                Toast.makeText(context, "Password harus minimal 8 karakter, dengan kombinasi huruf besar, kecil, dan angka.", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
 
@@ -165,14 +202,12 @@ fun SignInScreen(
                                             val user = loginResponse?.user
 
                                             if (user != null) {
-                                                // Pemanggilan ini sekarang aman karena SessionManager sudah diubah
                                                 sessionManager.createLoginSession(
                                                     idUser = user.id_user,
                                                     namaMasjid = user.nama_masjid,
                                                     email = user.email,
-                                                    alamat = user.alamat // <-- Mengirim nilai null sekarang tidak akan crash
+                                                    alamat = user.alamat
                                                 )
-
                                                 Log.d("SignInScreen", "Login Berhasil. Sesi untuk User ID: ${user.id_user} telah disimpan.")
                                                 Toast.makeText(context, "Selamat datang ${user.nama_masjid}", Toast.LENGTH_SHORT).show()
                                                 onSignInClick()
@@ -217,9 +252,6 @@ fun SignInScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // =======================================================================
-                    // ===                 PERBAIKAN UTAMA DAN FINAL ADA DI SINI           ===
-                    // =======================================================================
                     Text(
                         modifier = Modifier.clickable(onClick = onSignUpClick),
                         text = buildAnnotatedString {
@@ -227,25 +259,13 @@ fun SignInScreen(
                                 append("Tidak punya akun? ")
                             }
                             withStyle(style = SpanStyle(color = linkColor, fontWeight = FontWeight.Bold)) {
-                                // Mengubah "Daftar" menjadi "Sign Up"
                                 append("Sign Up")
                             }
                         }
                     )
-                    // =======================================================================
                 }
             }
-            // Spacer di akhir untuk memastikan bisa di-scroll
             Spacer(modifier = Modifier.height(32.dp))
         }
-
-        Image(
-            painter = painterResource(id = R.drawable.logo_imaan),
-            contentDescription = "App Logo",
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 100.dp)
-                .size(120.dp)
-        )
     }
 }

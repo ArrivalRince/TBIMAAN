@@ -1,6 +1,10 @@
 package com.example.tbimaan.coreui.screen.Inventaris
 
+import android.Manifest
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,12 +66,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -79,6 +87,7 @@ import com.example.tbimaan.coreui.navigation.KEUANGAN_GRAPH_ROUTE
 import com.example.tbimaan.coreui.viewmodel.InventarisEntry
 import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
 import com.example.tbimaan.model.SessionManager
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,9 +108,40 @@ fun ReadInventarisScreen(
     // ✅ tambahan: state pencarian
     var searchQuery by remember { mutableStateOf("") }
 
+    // =======================================================================
+    // ===       LOGIKA PERMINTAAN IZIN NOTIFIKASI (YANG HILANG)           ===
+    // =======================================================================
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (!isGranted) {
+            Toast.makeText(context, "Izin notifikasi ditolak. Pengingat tidak akan muncul.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // =======================================================================
+
+
     // ✅ tetap mengikuti VM/Repo yang ada
     LaunchedEffect(sessionManager.idUser) {
-        viewModel.loadInventaris(sessionManager.idUser)
+        sessionManager.idUser?.let {
+            viewModel.loadInventaris(it, context) // Kirim context
+        }
     }
 
     LaunchedEffect(errorMessage) {
@@ -187,7 +227,7 @@ fun ReadInventarisScreen(
             itemName = item.namaBarang,
             onConfirm = {
                 // ✅ tetap mengikuti VM/Repo yang ada
-                viewModel.deleteInventaris(item.id, sessionManager.idUser)
+                viewModel.deleteInventaris(item.id, sessionManager.idUser, context) // Kirim context
                 itemToDelete = null
             },
             onDismiss = { itemToDelete = null }

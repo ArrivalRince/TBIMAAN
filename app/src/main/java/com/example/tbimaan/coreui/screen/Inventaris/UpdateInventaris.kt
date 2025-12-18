@@ -61,7 +61,6 @@ import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
 import com.example.tbimaan.model.SessionManager
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,11 +99,13 @@ fun UpdateInventarisScreen(
             kondisi = loadedItem.kondisi
             existingImageUrl = loadedItem.urlFoto
 
-            val outputFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val parsedDate: Date? = try {
-                SimpleDateFormat("dd MMMM yyyy", Locale("in", "ID")).parse(loadedItem.tanggal)
-            } catch (e: Exception) { null }
-            tanggal = parsedDate?.let { outputFormatter.format(it) } ?: loadedItem.tanggal
+            // Konversi tanggal asli (Date object) ke format "yyyy-MM-dd" untuk DatePicker
+            tanggal = if (loadedItem.originalDate != null) {
+                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(loadedItem.originalDate)
+            } else {
+                // Fallback jika originalDate null, meskipun seharusnya tidak terjadi dengan VM baru
+                ""
+            }
         }
     }
 
@@ -226,6 +227,7 @@ fun UpdateInventarisScreen(
                                     jumlah = jumlahBarang,
                                     tanggal = tanggal,
                                     fotoFile = file,
+                                    context = context,
                                     onResult = { isSuccess, message ->
                                         isProcessing = false
                                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()

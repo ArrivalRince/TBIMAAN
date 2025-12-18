@@ -263,7 +263,8 @@ fun CreateInventarisScreen(
                                 kondisi = kondisi.ifBlank { "Baik" },
                                 jumlah = jumlahBarang,
                                 tanggal = tanggal,
-                                fotoFile = file
+                                fotoFile = file,
+                                context = context,
                             ) { success, message ->
                                 isLoading = false
                                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
