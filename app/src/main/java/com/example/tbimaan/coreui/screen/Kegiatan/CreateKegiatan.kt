@@ -44,7 +44,7 @@ fun CreateKegiatanScreen(
     navController: NavController,
     viewModel: KegiatanViewModel
 ) {
-    // ================= STATE FORM =================
+    // ================= FORM STATE =================
     var nama by remember { mutableStateOf("") }
     var tanggal by remember { mutableStateOf("") }
     var lokasi by remember { mutableStateOf("") }
@@ -52,14 +52,14 @@ fun CreateKegiatanScreen(
     var deskripsi by remember { mutableStateOf("") }
     val status = "Akan Datang"
 
-    // ================= STATE UI =================
+    // ================= UI STATE =================
     val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var tempUri by remember { mutableStateOf<Uri?>(null) }
     var showImageDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
-    val sessionManager = remember { SessionManager(context) }
-
 
     // ================= IMAGE PICKER =================
     val galleryLauncher =
@@ -73,21 +73,26 @@ fun CreateKegiatanScreen(
         }
 
     // ================= DATE PICKER =================
-    val calendar = remember { Calendar.getInstance() }
+    val calendar = Calendar.getInstance()
+
     val datePickerDialog = remember {
         DatePickerDialog(
             context,
-            { _, y, m, d ->
-                tanggal = "%04d-%02d-%02d".format(y, m + 1, d)
+            { _, year, month, day ->
+                tanggal = "%04d-%02d-%02d".format(year, month + 1, day)
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        )
+        ).apply {
+            // 🔥 Tidak bisa pilih tanggal sebelum hari ini
+            datePicker.minDate = System.currentTimeMillis()
+        }
     }
 
+    // ================= UI =================
     Scaffold(containerColor = Color.White) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize()) {
 
             Column(
                 modifier = Modifier
@@ -96,8 +101,12 @@ fun CreateKegiatanScreen(
                     .verticalScroll(rememberScrollState())
             ) {
 
-                // ================= HEADER =================
-                Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
+                // ===== HEADER =====
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                ) {
                     Image(
                         painter = painterResource(R.drawable.masjiddua),
                         contentDescription = null,
@@ -113,7 +122,7 @@ fun CreateKegiatanScreen(
                 Spacer(Modifier.height(16.dp))
 
                 Text(
-                    text = "Tambah Data Kegiatan",
+                    "Tambah Data Kegiatan",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1E5B8A),
@@ -122,7 +131,7 @@ fun CreateKegiatanScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                // ================= FORM =================
+                // ===== FORM =====
                 Card(
                     modifier = Modifier.padding(horizontal = 20.dp),
                     shape = RoundedCornerShape(16.dp),
@@ -186,7 +195,7 @@ fun CreateKegiatanScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        // ================= FOTO =================
+                        // ===== FOTO =====
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -222,7 +231,7 @@ fun CreateKegiatanScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                // ================= BUTTON =================
+                // ===== BUTTON =====
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -240,18 +249,23 @@ fun CreateKegiatanScreen(
                         text = if (isLoading) "Menyimpan..." else "Simpan",
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            val currentUserId = sessionManager.idUser
-                            val file: File? = try { imageUri?.let { uriToFile(context, it) } } catch (e: Exception) { null }
 
-                            // Validasi input
-                            if (currentUserId == null) {
-                                Toast.makeText(context, "Sesi pengguna tidak valid. Silakan login kembali.", Toast.LENGTH_LONG).show()
+                            val userId = sessionManager.idUser
+                            val file = imageUri?.let {
+                                try { uriToFile(context, it) } catch (e: Exception) { null }
+                            }
+
+                            // ===== VALIDASI =====
+                            if (userId == null) {
+                                Toast.makeText(context, "Sesi tidak valid, silakan login ulang", Toast.LENGTH_LONG).show()
                                 return@PrimaryButton
                             }
+
                             if (nama.isBlank() || tanggal.isBlank() || lokasi.isBlank() || penanggungjawab.isBlank()) {
                                 Toast.makeText(context, "Semua field wajib diisi", Toast.LENGTH_SHORT).show()
                                 return@PrimaryButton
                             }
+
                             if (file == null || !file.exists()) {
                                 Toast.makeText(context, "Foto kegiatan wajib diisi", Toast.LENGTH_SHORT).show()
                                 return@PrimaryButton
@@ -259,46 +273,43 @@ fun CreateKegiatanScreen(
 
                             isLoading = true
 
-
-                            // Kirim ID pengguna yang valid ke ViewModel
                             viewModel.createKegiatanMultipart(
-                                idUser = currentUserId.toString(), // <-- Kirim ID yang benar
+                                idUser = userId.toString(),
                                 nama = nama,
                                 tanggal = tanggal,
                                 lokasi = lokasi,
                                 penanggungjawab = penanggungjawab,
                                 deskripsi = deskripsi,
                                 status = status,
-                                fotoFile = file
+                                fotoFile = file,
+                                context = context,
                             ) { success, message ->
                                 isLoading = false
                                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                                if (success) {
-                                    navController.popBackStack()
-                                }
+                                if (success) navController.popBackStack()
                             }
-                            // ========================================================
                         }
                     )
                 }
+
                 Spacer(Modifier.height(32.dp))
+            }
+
+            // ===== LOADING OVERLAY =====
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color.White)
+                }
             }
         }
     }
 
-    // ================= LOADING =================
-    if (isLoading) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f)),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = Color.White)
-        }
-    }
-
-    // ================= DIALOG FOTO =================
+    // ===== DIALOG FOTO =====
     if (showImageDialog) {
         AlertDialog(
             onDismissRequest = { showImageDialog = false },
