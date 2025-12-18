@@ -7,7 +7,6 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,15 +27,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.tbimaan.R
-import com.example.tbimaan.coreui.components.BackButtonOnImage
 import com.example.tbimaan.coreui.viewmodel.KeuanganViewModel
 import com.example.tbimaan.model.SessionManager
 import java.io.File
@@ -178,6 +174,7 @@ fun CreateKeuanganScreen(
                                 tanggal = tanggal,
                                 jumlah = jumlah,
                                 buktiFile = file,
+                                context = context,
                                 onResult = { isSuccess, message ->
                                     isLoading = false
                                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()

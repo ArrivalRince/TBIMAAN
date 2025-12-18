@@ -12,12 +12,6 @@ import com.example.tbimaan.coreui.screen.Keuangan.ReadKeuanganScreen
 import com.example.tbimaan.coreui.screen.Keuangan.UpdateKeuanganScreen
 
 
-
-/**
- * Fungsi ini hanya mendefinisikan rute navigasi untuk modul Keuangan.
- * Semua logika klik dan data dummy sudah dihapus karena sekarang dikelola
- * di dalam masing-masing layar (Screen) atau ViewModel.
- */
 fun NavGraphBuilder.keuanganNavGraph(navController: NavController) {
     navigation(
         startDestination = "read_keuangan",
@@ -26,25 +20,19 @@ fun NavGraphBuilder.keuanganNavGraph(navController: NavController) {
 
         // 🔹 Rute untuk halaman utama modul keuangan (Read)
         composable("read_keuangan") {
-            // =================== PERBAIKAN #1 ===================
-            // Panggil ReadKeuanganScreen hanya dengan parameter yang ada.
-            // Semua parameter on...Click sudah dihapus dari definisi fungsi.
+
             ReadKeuanganScreen(
                 navController = navController,
-                viewModel = viewModel() // Mengambil instance KeuanganViewModel
+                viewModel = viewModel()
             )
-            // ====================================================
         }
 
         // 🔹 Rute untuk halaman tambah data (Create)
         composable("create_keuangan") {
-            // =================== PERBAIKAN #2 ===================
-            // Panggil CreateKeuanganScreen hanya dengan NavController.
-            // onNavigate dan onSave sudah tidak ada.
+
             CreateKeuanganScreen(
                 navController = navController
             )
-            // ====================================================
         }
 
         // 🔹 Rute untuk halaman perbarui data (Update)
@@ -54,14 +42,10 @@ fun NavGraphBuilder.keuanganNavGraph(navController: NavController) {
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("id") ?: "ID_TIDAK_DIKETAHUI"
 
-            // =================== PERBAIKAN #3 ===================
-            // Panggil UpdateKeuanganScreen hanya dengan NavController dan id.
-            // onNavigate dan onUpdateClick sudah tidak ada.
             UpdateKeuanganScreen(
                 navController = navController,
                 id = id
             )
-            // ====================================================
         }
     }
 }

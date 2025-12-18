@@ -1,5 +1,6 @@
 package com.example.tbimaan.coreui.viewmodel
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -7,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tbimaan.coreui.repository.KeuanganRepository
 import com.example.tbimaan.coreui.screen.Keuangan.PemasukanEntry
+import com.example.tbimaan.coreui.Notification.KeuanganNotification
 import com.example.tbimaan.model.KeuanganResponse
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -17,6 +19,16 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+
+data class PemasukanEntry(
+    val id: String,
+    val keterangan: String,
+    val jumlah: Double,
+    val tanggal: String,
+    val namaBukti: String = "Lihat Bukti",
+    val tipeTransaksi: String = "",
+    val urlBukti: String = ""
+)
 class KeuanganViewModel : ViewModel() {
 
     private val repository = KeuanganRepository()
@@ -37,49 +49,64 @@ class KeuanganViewModel : ViewModel() {
     private val _selectedItem = mutableStateOf<PemasukanEntry?>(null)
     val selectedItem: State<PemasukanEntry?> = _selectedItem
 
-    /**
-     * Memuat SEMUA data keuangan untuk pengguna yang sedang login.
-     * PERBAIKAN: Sekarang menerima `currentUserId` sebagai parameter dari UI.
-     */
-    fun loadData(currentUserId: Int?) {
-        // 1. Validasi ID Pengguna
+    // Di dalam class KeuanganViewModel
+    fun loadData(currentUserId: Int?, context: Context) {
         if (currentUserId == null) {
             _errorMessage.value = "Sesi pengguna tidak valid. Silakan login kembali."
-            Log.e(TAG, "loadData: Gagal karena idUser null.")
             _isLoading.value = false
             return
         }
 
-        if (_isLoading.value && _pemasukanList.value.isEmpty() && _pengeluaranList.value.isEmpty()) return
-
         viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = ""
+            // Hanya tunjukkan loading jika list masih kosong
+            if (_pemasukanList.value.isEmpty() && _pengeluaranList.value.isEmpty()) {
+                _isLoading.value = true
+            }
+
             Log.d(TAG, "loadData: Memulai ambil data untuk User ID: $currentUserId")
 
-            // 2. Teruskan ID yang sudah valid ke repository
+            // Memanggil repository.getKeuangan
             repository.getKeuangan(currentUserId) { responseList ->
-                try {
-                    if (responseList != null) {
+                // =======================================================
+                // ===          PERBAIKAN LOGIKA LOADING DI SINI         ===
+                // =======================================================
+                // 1. Langsung matikan loading setelah data dari jaringan diterima.
+                _isLoading.value = false
+
+                // 2. Lanjutkan proses pengolahan data.
+                if (responseList != null) {
+                    try {
                         val entries = responseList.mapNotNull { it.toPemasukanEntry() }
                         _pemasukanList.value = entries.filter { it.tipeTransaksi.equals("pemasukan", ignoreCase = true) }
                         _pengeluaranList.value = entries.filter { it.tipeTransaksi.equals("pengeluaran", ignoreCase = true) }
-                    } else {
-                        _errorMessage.value = "Gagal mengambil data dari server."
+                        checkBalanceAndNotify(context)
+                    } catch (e: Exception) {
+                        _errorMessage.value = "Error saat memproses data: ${e.message}"
                     }
-                } catch (e: Exception) {
-                    _errorMessage.value = "Error: ${e.message}"
-                } finally {
-                    _isLoading.value = false
+                } else {
+                    _errorMessage.value = "Gagal mengambil data dari server."
                 }
+                // =======================================================
             }
         }
     }
 
-    /**
-     * Membuat data keuangan baru.
-     * PERBAIKAN: Sekarang menerima `currentUserId` sebagai parameter dari UI.
-     */
+
+    private fun checkBalanceAndNotify(context: Context) {
+        val totalPemasukan = _pemasukanList.value.sumOf { it.jumlah }
+        val totalPengeluaran = _pengeluaranList.value.sumOf { it.jumlah }
+
+        if (totalPengeluaran > totalPemasukan) {
+            Log.d(TAG, "checkBalanceAndNotify: Defisit terdeteksi. Menampilkan notifikasi.")
+
+            KeuanganNotification.showBudgetWarningNotification(context, totalPemasukan, totalPengeluaran)
+        } else {
+            Log.d(TAG, "checkBalanceAndNotify: Saldo aman. Menghapus notifikasi.")
+
+            KeuanganNotification.cancelBudgetWarningNotification(context)
+        }
+    }
+
     fun createKeuangan(
         currentUserId: Int?,
         keterangan: String,
@@ -87,9 +114,9 @@ class KeuanganViewModel : ViewModel() {
         tanggal: String,
         jumlah: String,
         buktiFile: File,
+        context: Context,
         onResult: (isSuccess: Boolean, message: String) -> Unit
     ) {
-        // 1. Validasi ID Pengguna
         if (currentUserId == null) {
             onResult(false, "Sesi pengguna tidak valid, tidak bisa menyimpan data.")
             Log.e(TAG, "createKeuangan: Gagal karena idUser null.")
@@ -98,7 +125,6 @@ class KeuanganViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // 2. Gunakan ID yang sudah valid untuk membuat RequestBody
                 val idUserBody = currentUserId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                 val keteranganBody = keterangan.toRequestBody("text/plain".toMediaTypeOrNull())
                 val tipeTransaksiBody = tipeTransaksi.lowercase().toRequestBody("text/plain".toMediaTypeOrNull())
@@ -108,7 +134,7 @@ class KeuanganViewModel : ViewModel() {
                 val buktiPart = MultipartBody.Part.createFormData("bukti_transaksi", buktiFile.name, requestFile)
 
                 repository.createKeuangan(idUserBody, keteranganBody, tipeTransaksiBody, tanggalBody, jumlahBody, buktiPart) { isSuccess, message ->
-                    if (isSuccess) loadData(currentUserId) // Muat ulang data untuk user ini jika berhasil
+                    if (isSuccess) loadData(currentUserId, context) // <-- Kirim context saat reload
                     onResult(isSuccess, message)
                 }
             } catch (e: Exception) {
@@ -117,10 +143,6 @@ class KeuanganViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Memperbarui data keuangan yang sudah ada.
-     * PERBAIKAN: Sekarang menerima `currentUserId` sebagai parameter dari UI untuk validasi.
-     */
     fun updateKeuangan(
         id: String,
         currentUserId: Int?,
@@ -129,9 +151,9 @@ class KeuanganViewModel : ViewModel() {
         tanggal: String,
         jumlah: String,
         buktiFile: File?,
+        context: Context,
         onResult: (isSuccess: Boolean, message: String) -> Unit
     ) {
-        // 1. Validasi ID Pengguna
         if (currentUserId == null) {
             onResult(false, "Sesi pengguna tidak valid, tidak bisa memperbarui data.")
             Log.e(TAG, "updateKeuangan: Gagal karena idUser null.")
@@ -153,7 +175,7 @@ class KeuanganViewModel : ViewModel() {
                 }
 
                 repository.updateKeuangan(id, keteranganBody, tipeTransaksiBody, tanggalBody, jumlahBody, buktiPart) { isSuccess, message ->
-                    if (isSuccess) loadData(currentUserId)
+                    if (isSuccess) loadData(currentUserId, context) // <-- Kirim context saat reload
                     onResult(isSuccess, message)
                 }
             } catch (e: Exception) {
@@ -162,11 +184,7 @@ class KeuanganViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Menghapus data keuangan.
-     * PERBAIKAN: Memuat ulang data dengan `idUser` yang benar setelah berhasil.
-     */
-    fun deleteKeuangan(id: String, currentUserId: Int?) {
+    fun deleteKeuangan(id: String, currentUserId: Int?, context: Context) {
         if (currentUserId == null) {
             _errorMessage.value = "Sesi pengguna tidak valid, tidak bisa menghapus data."
             return
@@ -178,10 +196,10 @@ class KeuanganViewModel : ViewModel() {
             _errorMessage.value = ""
             repository.deleteKeuangan(id) { isSuccess, message ->
                 if (isSuccess) {
-                    loadData(currentUserId)
+                    loadData(currentUserId, context) // <-- Kirim context saat reload
                 } else {
                     _errorMessage.value = message
-                    _isLoading.value = false
+                    _isLoading.value = false // Set loading false hanya jika gagal, karena loadData sudah handle
                 }
             }
         }

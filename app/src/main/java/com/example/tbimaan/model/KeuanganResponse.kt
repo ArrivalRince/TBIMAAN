@@ -2,16 +2,6 @@ package com.example.tbimaan.model
 
 import com.google.gson.annotations.SerializedName
 
-/**
- * Data class ini mencocokkan struktur JSON dari backend (snake_case)
- * dengan variabel Kotlin (camelCase) menggunakan @SerializedName.
- *
- * KELEBIHAN:
- * ✔ Tidak perlu mengubah backend
- * ✔ Aplikasi tetap rapi dengan camelCase
- * ✔ Retrofit membaca data tanpa error
- */
-
 data class KeuanganResponse(
 
     @SerializedName("id_transaksi")
@@ -33,5 +23,5 @@ data class KeuanganResponse(
     val jumlah: Int?,
 
     @SerializedName("bukti_transaksi")
-    val buktiTransaksi: String?     // ini URL lengkap dari backend
+    val buktiTransaksi: String?
 )
