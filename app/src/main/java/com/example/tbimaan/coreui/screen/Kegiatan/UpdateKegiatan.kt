@@ -23,18 +23,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.tbimaan.R
 import com.example.tbimaan.coreui.components.BackButtonOnImage
 import com.example.tbimaan.coreui.components.PrimaryButton
 import com.example.tbimaan.coreui.components.SecondaryButton
 import com.example.tbimaan.coreui.navigation.KEGIATAN_GRAPH_ROUTE
 import com.example.tbimaan.coreui.utils.getTempUri
 import com.example.tbimaan.coreui.utils.uriToFile
-import com.example.tbimaan.model.UserSession
+import com.example.tbimaan.model.SessionManager   // ✅ GANTI UserSession
 import com.example.tbimaan.network.ApiClient
 import com.example.tbimaan.network.KegiatanDto
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -61,6 +61,7 @@ fun UpdateKegiatanScreen(
     fotoAwal: String?
 ) {
     val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) } // ✅ SESSION
 
     // ================= STATE =================
     var nama by remember { mutableStateOf(namaAwal) }
@@ -69,6 +70,7 @@ fun UpdateKegiatanScreen(
     var penanggungjawab by remember { mutableStateOf(penanggungjawabAwal) }
     var deskripsi by remember { mutableStateOf(deskripsiAwal) }
     var status by remember { mutableStateOf(statusAwal) }
+
     var statusExpanded by remember { mutableStateOf(false) }
     val statusOptions = listOf("Akan Datang", "Selesai")
 
@@ -90,6 +92,17 @@ fun UpdateKegiatanScreen(
 
     // ================= DATE PICKER =================
     val calendar = remember { Calendar.getInstance() }
+    val datePickerDialog = remember {
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                tanggal = "%04d-%02d-%02d".format(year, month + 1, day)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+    }
 
     Scaffold(
         containerColor = Color.White,
@@ -117,7 +130,7 @@ fun UpdateKegiatanScreen(
                         .height(180.dp)
                 ) {
                     Image(
-                        painter = painterResource(com.example.tbimaan.R.drawable.masjiddua),
+                        painter = painterResource(R.drawable.masjiddua),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -141,7 +154,7 @@ fun UpdateKegiatanScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                // ================= FORM CARD =================
+                // ================= FORM =================
                 Card(
                     modifier = Modifier.padding(horizontal = 20.dp),
                     shape = RoundedCornerShape(16.dp),
@@ -166,17 +179,12 @@ fun UpdateKegiatanScreen(
                             label = { Text("Tanggal (YYYY-MM-DD)") },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    DatePickerDialog(
-                                        context,
-                                        { _, y, m, d ->
-                                            tanggal = "%04d-%02d-%02d".format(y, m + 1, d)
-                                        },
-                                        calendar.get(Calendar.YEAR),
-                                        calendar.get(Calendar.MONTH),
-                                        calendar.get(Calendar.DAY_OF_MONTH)
-                                    ).show()
+                                .clickable { datePickerDialog.show() },
+                            trailingIcon = {
+                                IconButton(onClick = { datePickerDialog.show() }) {
+                                    Icon(Icons.Default.DateRange, null)
                                 }
+                            }
                         )
 
                         OutlinedTextField(
@@ -214,9 +222,7 @@ fun UpdateKegiatanScreen(
                                 trailingIcon = {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded)
                                 },
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .fillMaxWidth()
+                                modifier = Modifier.menuAnchor().fillMaxWidth()
                             )
 
                             ExposedDropdownMenu(
@@ -242,11 +248,7 @@ fun UpdateKegiatanScreen(
                                 .height(180.dp)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(Color(0xFFF0F5F9))
-                                .border(
-                                    1.dp,
-                                    Color(0xFFDDEEFF),
-                                    RoundedCornerShape(16.dp)
-                                )
+                                .border(1.dp, Color(0xFFDDEEFF), RoundedCornerShape(16.dp))
                                 .clickable { showDialog = true },
                             contentAlignment = Alignment.Center
                         ) {
@@ -259,7 +261,6 @@ fun UpdateKegiatanScreen(
                                         contentScale = ContentScale.Crop
                                     )
                                 }
-
                                 !fotoAwal.isNullOrBlank() -> {
                                     AsyncImage(
                                         model = fotoAwal,
@@ -268,12 +269,11 @@ fun UpdateKegiatanScreen(
                                         contentScale = ContentScale.Crop
                                     )
                                 }
-
                                 else -> {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(
                                             Icons.Default.AddPhotoAlternate,
-                                            contentDescription = null,
+                                            null,
                                             tint = Color(0xFF1E5B8A),
                                             modifier = Modifier.size(40.dp)
                                         )
@@ -306,6 +306,9 @@ fun UpdateKegiatanScreen(
                         text = if (isLoading) "Menyimpan..." else "Update",
                         modifier = Modifier.weight(1f),
                         onClick = {
+                            val userId = sessionManager.idUser
+                            if (userId == null) return@PrimaryButton
+
                             if (
                                 nama.isBlank() ||
                                 tanggal.isBlank() ||
@@ -330,7 +333,7 @@ fun UpdateKegiatanScreen(
 
                             ApiClient.instance.updateKegiatanMultipart(
                                 id = idKegiatan.toString(),
-                                idUser = text(UserSession.idUser.toString()),
+                                idUser = text(userId.toString()),   // ✅ SESSION DIPAKAI
                                 namaKegiatan = text(nama),
                                 tanggalKegiatan = text(tanggal),
                                 lokasi = lokasi.takeIf { it.isNotBlank() }?.let { text(it) },
@@ -349,10 +352,7 @@ fun UpdateKegiatanScreen(
                                     }
                                 }
 
-                                override fun onFailure(
-                                    call: Call<KegiatanDto>,
-                                    t: Throwable
-                                ) {
+                                override fun onFailure(call: Call<KegiatanDto>, t: Throwable) {
                                     isLoading = false
                                 }
                             })
@@ -361,7 +361,6 @@ fun UpdateKegiatanScreen(
                 }
             }
 
-            // ================= LOADING =================
             if (isLoading) {
                 Box(
                     modifier = Modifier

@@ -16,7 +16,9 @@ class KegiatanRepository {
     // =========================
     // GET ALL
     // =========================
-    fun getKegiatan(onResult: (List<KegiatanDto>?) -> Unit) {
+    fun getKegiatan(
+        onResult: (List<KegiatanDto>?) -> Unit
+    ) {
         ApiClient.instance.getKegiatan()
             .enqueue(object : Callback<List<KegiatanDto>> {
 
@@ -27,13 +29,16 @@ class KegiatanRepository {
                     if (response.isSuccessful) {
                         onResult(response.body())
                     } else {
-                        Log.e(TAG, "getKegiatan error ${response.code()} : ${response.errorBody()?.string()}")
+                        Log.e(
+                            TAG,
+                            "getKegiatan error ${response.code()} : ${response.errorBody()?.string()}"
+                        )
                         onResult(null)
                     }
                 }
 
                 override fun onFailure(call: Call<List<KegiatanDto>>, t: Throwable) {
-                    Log.e(TAG, "getKegiatan failure: ${t.message}")
+                    Log.e(TAG, "getKegiatan failure: ${t.message}", t)
                     onResult(null)
                 }
             })
@@ -42,7 +47,10 @@ class KegiatanRepository {
     // =========================
     // GET BY ID
     // =========================
-    fun getKegiatanById(id: String, onResult: (KegiatanDto?) -> Unit) {
+    fun getKegiatanById(
+        id: String,
+        onResult: (KegiatanDto?) -> Unit
+    ) {
         ApiClient.instance.getKegiatanById(id)
             .enqueue(object : Callback<KegiatanDto> {
 
@@ -53,20 +61,23 @@ class KegiatanRepository {
                     if (response.isSuccessful) {
                         onResult(response.body())
                     } else {
-                        Log.e(TAG, "getKegiatanById error ${response.code()} : ${response.errorBody()?.string()}")
+                        Log.e(
+                            TAG,
+                            "getKegiatanById error ${response.code()} : ${response.errorBody()?.string()}"
+                        )
                         onResult(null)
                     }
                 }
 
                 override fun onFailure(call: Call<KegiatanDto>, t: Throwable) {
-                    Log.e(TAG, "getKegiatanById failure: ${t.message}")
+                    Log.e(TAG, "getKegiatanById failure: ${t.message}", t)
                     onResult(null)
                 }
             })
     }
 
     // =========================
-    // CREATE (MULTIPART) ⭐ FIX UTAMA
+    // CREATE (MULTIPART)
     // =========================
     fun createKegiatanMultipart(
         idUser: RequestBody,
@@ -99,20 +110,23 @@ class KegiatanRepository {
                     onResult(true, "Kegiatan berhasil disimpan")
                 } else {
                     val err = response.errorBody()?.string()
-                    Log.e(TAG, "createKegiatanMultipart ERROR ${response.code()} : $err")
+                    Log.e(
+                        TAG,
+                        "createKegiatanMultipart ERROR ${response.code()} : $err"
+                    )
                     onResult(false, err ?: "Gagal menyimpan kegiatan")
                 }
             }
 
             override fun onFailure(call: Call<KegiatanDto>, t: Throwable) {
                 Log.e(TAG, "createKegiatanMultipart FAILURE: ${t.message}", t)
-                onResult(false, t.message ?: "Koneksi gagal")
+                onResult(false, t.message ?: "Koneksi ke server gagal")
             }
         })
     }
 
     // =========================
-    // UPDATE (JSON – opsional)
+    // UPDATE (JSON)
     // =========================
     fun updateKegiatan(
         id: String,
@@ -130,14 +144,17 @@ class KegiatanRepository {
                         onResult(true, "Kegiatan berhasil diperbarui")
                     } else {
                         val err = response.errorBody()?.string()
-                        Log.e(TAG, "updateKegiatan error ${response.code()} : $err")
-                        onResult(false, err ?: "Gagal memperbarui")
+                        Log.e(
+                            TAG,
+                            "updateKegiatan error ${response.code()} : $err"
+                        )
+                        onResult(false, err ?: "Gagal memperbarui kegiatan")
                     }
                 }
 
                 override fun onFailure(call: Call<KegiatanDto>, t: Throwable) {
-                    Log.e(TAG, "updateKegiatan failure: ${t.message}")
-                    onResult(false, t.message ?: "Koneksi gagal")
+                    Log.e(TAG, "updateKegiatan failure: ${t.message}", t)
+                    onResult(false, t.message ?: "Koneksi ke server gagal")
                 }
             })
     }
@@ -160,14 +177,17 @@ class KegiatanRepository {
                         onResult(true, "Kegiatan berhasil dihapus")
                     } else {
                         val err = response.errorBody()?.string()
-                        Log.e(TAG, "deleteKegiatan error ${response.code()} : $err")
-                        onResult(false, err ?: "Gagal menghapus")
+                        Log.e(
+                            TAG,
+                            "deleteKegiatan error ${response.code()} : $err"
+                        )
+                        onResult(false, err ?: "Gagal menghapus kegiatan")
                     }
                 }
 
                 override fun onFailure(call: Call<Void>, t: Throwable) {
-                    Log.e(TAG, "deleteKegiatan failure: ${t.message}")
-                    onResult(false, t.message ?: "Koneksi gagal")
+                    Log.e(TAG, "deleteKegiatan failure: ${t.message}", t)
+                    onResult(false, t.message ?: "Koneksi ke server gagal")
                 }
             })
     }

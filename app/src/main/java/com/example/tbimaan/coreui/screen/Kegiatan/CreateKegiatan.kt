@@ -33,7 +33,6 @@ import com.example.tbimaan.coreui.components.SecondaryButton
 import com.example.tbimaan.coreui.utils.getTempUri
 import com.example.tbimaan.coreui.utils.uriToFile
 import com.example.tbimaan.coreui.viewmodel.KegiatanViewModel
-import com.example.tbimaan.model.UserSession
 import java.io.File
 import java.util.Calendar
 import com.example.tbimaan.model.SessionManager // <-- GANTI UserSession DENGAN INI
@@ -287,37 +286,37 @@ fun CreateKegiatanScreen(
         }
     }
 
-            // ================= LOADING =================
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Color.White)
-                }
-            }
-
-            // ================= DIALOG FOTO =================
-            if (showImageDialog) {
-                AlertDialog(
-                    onDismissRequest = { showImageDialog = false },
-                    title = { Text("Pilih Sumber Foto") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            showImageDialog = false
-                            val tmp = getTempUri(context)
-                            tempUri = tmp
-                            cameraLauncher.launch(tmp)
-                        }) { Text("Kamera") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = {
-                            showImageDialog = false
-                            galleryLauncher.launch("image/*")
-                        }) { Text("Galeri") }
-                    }
-                )
-            }
+    // ================= LOADING =================
+    if (isLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = Color.White)
         }
+    }
+
+    // ================= DIALOG FOTO =================
+    if (showImageDialog) {
+        AlertDialog(
+            onDismissRequest = { showImageDialog = false },
+            title = { Text("Pilih Sumber Foto") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showImageDialog = false
+                    val tmp = getTempUri(context)
+                    tempUri = tmp
+                    cameraLauncher.launch(tmp)
+                }) { Text("Kamera") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showImageDialog = false
+                    galleryLauncher.launch("image/*")
+                }) { Text("Galeri") }
+            }
+        )
+    }
+}

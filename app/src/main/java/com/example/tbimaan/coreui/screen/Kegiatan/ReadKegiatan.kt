@@ -10,9 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material3.*
@@ -22,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,8 +31,8 @@ import coil.compose.AsyncImage
 import com.example.tbimaan.R
 import com.example.tbimaan.coreui.components.AddFAB
 import com.example.tbimaan.coreui.components.BackButtonOnImage
-import com.example.tbimaan.coreui.components.EditButton
 import com.example.tbimaan.coreui.navigation.KEGIATAN_GRAPH_ROUTE
+import com.example.tbimaan.model.SessionManager
 import com.example.tbimaan.network.ApiClient
 import com.example.tbimaan.network.KegiatanDto
 import retrofit2.Call
@@ -59,54 +58,68 @@ fun ReadKegiatanScreen(
     onAddClick: () -> Unit,
     onEditClick: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+
     var list by remember { mutableStateOf<List<KegiatanUi>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var kegiatanToDelete by remember { mutableStateOf<KegiatanUi?>(null) }
+
     // ================= LOAD DATA =================
-    LaunchedEffect(Unit) {
+    LaunchedEffect(sessionManager.idUser) {
+        val userId = sessionManager.idUser
+        if (userId == null) {
+            isLoading = false
+            error = "Sesi pengguna tidak valid"
+            return@LaunchedEffect
+        }
+
+        isLoading = true
         ApiClient.instance.getKegiatan()
             .enqueue(object : Callback<List<KegiatanDto>> {
                 override fun onResponse(
                     call: Call<List<KegiatanDto>>,
                     response: Response<List<KegiatanDto>>
                 ) {
+                    isLoading = false
                     if (response.isSuccessful) {
-                        list = response.body().orEmpty().mapNotNull { dto ->
-                            val id = dto.id_kegiatan ?: return@mapNotNull null
+                        list = response.body()
+                            .orEmpty()
+                            .filter { it.id_user == userId }
+                            .mapNotNull { dto ->
+                                val id = dto.id_kegiatan ?: return@mapNotNull null
 
-                            val foto = dto.foto_kegiatan?.let {
-                                when {
-                                    it.startsWith("http", true) -> it
-                                    it.startsWith("/") ->
-                                        ApiClient.BASE_URL.removeSuffix("/") + it
-                                    else ->
-                                        ApiClient.BASE_URL.removeSuffix("/") + "/uploads/$it"
+                                val foto = dto.foto_kegiatan?.let {
+                                    when {
+                                        it.startsWith("http", true) -> it
+                                        it.startsWith("/") ->
+                                            ApiClient.BASE_URL.removeSuffix("/") + it
+                                        else ->
+                                            ApiClient.BASE_URL.removeSuffix("/") + "/uploads/$it"
+                                    }
                                 }
-                            }
 
-                            KegiatanUi(
-                                id = id,
-                                nama = dto.nama_kegiatan ?: "",
-                                tanggal = dto.tanggal_kegiatan ?: "",
-                                lokasi = dto.lokasi ?: "",
-                                penanggungjawab = dto.penanggungjawab ?: "",
-                                deskripsi = dto.deskripsi ?: "",
-                                status = dto.status_kegiatan ?: "Akan Datang",
-                                fotoUrl = foto
-                            )
-                        }
-                        isLoading = false
-                    } else {
-                        error = "Gagal memuat data"
-                        isLoading = false
-                    }
+                                KegiatanUi(
+                                    id = id,
+                                    nama = dto.nama_kegiatan ?: "",
+                                    tanggal = dto.tanggal_kegiatan ?: "",
+                                    lokasi = dto.lokasi ?: "",
+                                    penanggungjawab = dto.penanggungjawab ?: "",
+                                    deskripsi = dto.deskripsi ?: "",
+                                    status = dto.status_kegiatan ?: "Akan Datang",
+                                    fotoUrl = foto
+                                )
+                            }
+                    } else error = "Gagal memuat data"
                 }
 
                 override fun onFailure(call: Call<List<KegiatanDto>>, t: Throwable) {
-                    Log.e("ReadKegiatan", t.message ?: "error")
-                    error = "Koneksi gagal"
                     isLoading = false
+                    error = "Koneksi gagal"
+                    Log.e("ReadKegiatan", t.message ?: "error")
                 }
             })
     }
@@ -118,10 +131,9 @@ fun ReadKegiatanScreen(
     // ================= UI =================
     Scaffold(
         floatingActionButton = { AddFAB(onClick = onAddClick) },
-        bottomBar = {
-            BottomBar(onNavigate, KEGIATAN_GRAPH_ROUTE)
-        }
+        bottomBar = { BottomBar(onNavigate, KEGIATAN_GRAPH_ROUTE) }
     ) { padding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -129,7 +141,6 @@ fun ReadKegiatanScreen(
                 .background(Color(0xFFF9F9F9))
         ) {
 
-            // HEADER
             Box(Modifier.fillMaxWidth().height(180.dp)) {
                 Image(
                     painter = painterResource(R.drawable.masjid),
@@ -167,31 +178,25 @@ fun ReadKegiatanScreen(
             Spacer(Modifier.height(8.dp))
 
             when {
-                isLoading -> {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    CircularProgressIndicator()
                 }
 
-                error != null -> {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Text(error!!, color = Color.Red)
-                    }
+                error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Text(error!!, color = Color.Red)
                 }
 
-                filtered.isEmpty() -> {
-                    Text(
-                        "Tidak ada kegiatan",
-                        modifier = Modifier.fillMaxWidth().padding(32.dp),
-                        textAlign = TextAlign.Center
-                    )
-                }
+                filtered.isEmpty() -> Text(
+                    "Tidak ada kegiatan",
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    textAlign = TextAlign.Center
+                )
 
-                else -> {
-                    LazyColumn {
-                        items(filtered) { kegiatan ->
-                            KegiatanCard(kegiatan) {
-
+                else -> LazyColumn {
+                    items(filtered) { kegiatan ->
+                        KegiatanCard(
+                            kegiatan = kegiatan,
+                            onEdit = {
                                 val route =
                                     "update_kegiatan/" +
                                             kegiatan.id + "/" +
@@ -202,14 +207,54 @@ fun ReadKegiatanScreen(
                                             Uri.encode(kegiatan.deskripsi) + "/" +
                                             Uri.encode(kegiatan.status) + "/" +
                                             Uri.encode(kegiatan.fotoUrl ?: "")
-
                                 navController.navigate(route)
+                            },
+                            onDelete = {
+                                kegiatanToDelete = kegiatan
+                                showDeleteDialog = true
                             }
-                        }
+                        )
                     }
                 }
             }
         }
+    }
+
+    // ================= DELETE DIALOG =================
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Konfirmasi Hapus") },
+            text = { Text("Yakin ingin menghapus \"${kegiatanToDelete?.nama}\"?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        kegiatanToDelete?.let { k ->
+                            ApiClient.instance.deleteKegiatan(k.id.toString())
+                                .enqueue(object : Callback<Void> {
+                                    override fun onResponse(
+                                        call: Call<Void>,
+                                        response: Response<Void>
+                                    ) {
+                                        if (response.isSuccessful) {
+                                            list = list.filterNot { it.id == k.id }
+                                        }
+                                    }
+
+                                    override fun onFailure(call: Call<Void>, t: Throwable) {}
+                                })
+                        }
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) { Text("Hapus") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 
@@ -217,106 +262,125 @@ fun ReadKegiatanScreen(
 @Composable
 fun KegiatanCard(
     kegiatan: KegiatanUi,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Card(
         modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 6.dp)
             .fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column {
 
-            // ===== FOTO (lebih kecil) =====
-            if (!kegiatan.fotoUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = kegiatan.fotoUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Image(
-                    painter = painterResource(R.drawable.kajianbulanan),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp),
-                    contentScale = ContentScale.Crop
-                )
-            }
+            // ===== FOTO =====
+            AsyncImage(
+                model = kegiatan.fotoUrl ?: R.drawable.kajianbulanan,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                contentScale = ContentScale.Crop
+            )
 
             Column(
-                modifier = Modifier.padding(14.dp)
+                modifier = Modifier.padding(12.dp)
             ) {
 
-                // ===== NAMA + STATUS =====
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                // ===== JUDUL + STATUS =====
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = kegiatan.nama,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        lineHeight = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
                         modifier = Modifier.weight(1f),
-                        color = Color(0xFF1E1E1E)
+                        maxLines = 1
                     )
-
-                    Spacer(Modifier.width(8.dp))
-
-                    val isSelesai = kegiatan.status == "Selesai"
 
                     Box(
                         modifier = Modifier
                             .background(
-                                color = if (isSelesai)
+                                if (kegiatan.status == "Selesai")
                                     Color(0xFFE8F5E9)
                                 else
                                     Color(0xFFFFEBEE),
-                                shape = RoundedCornerShape(10.dp)
+                                RoundedCornerShape(8.dp)
                             )
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = kegiatan.status,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isSelesai)
-                                Color(0xFF2E7D32)
-                            else
-                                Color(0xFFC62828)
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
 
-                // ===== DETAIL TANPA EMOJI =====
+                // ===== INFO =====
                 Text(
                     text = "Tanggal: ${kegiatan.tanggal}",
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     color = Color.DarkGray
                 )
                 Text(
                     text = "Tempat: ${kegiatan.lokasi}",
-                    fontSize = 12.sp,
-                    color = Color.DarkGray
+                    fontSize = 11.sp,
+                    color = Color.DarkGray,
+                    maxLines = 1
                 )
                 Text(
-                    text = "Deskripsi: ${kegiatan.deskripsi}",
-                    fontSize = 12.sp,
+                    text = "Penanggungjawab: ${kegiatan.penanggungjawab}",
+                    fontSize = 11.sp,
                     color = Color.DarkGray,
-                    maxLines = 2
+                    maxLines = 1
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(6.dp))
 
-                EditButton(onClick = onEdit)
+                // ===== DESKRIPSI + AKSI (SEJAJAR) =====
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Text(
+                        text = kegiatan.deskripsi,
+                        fontSize = 11.sp,
+                        color = Color.Gray,
+                        maxLines = 2,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = Color(0xFFFFA000),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Hapus",
+                            tint = Color.Red,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -346,10 +410,7 @@ fun BottomItem(
     onClick: () -> Unit
 ) {
     val color = if (selected) Color(0xFF1E5B8A) else Color.Gray
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable(onClick = onClick)) {
         Icon(icon, null, tint = color)
         Text(label, fontSize = 11.sp, color = color)
     }
