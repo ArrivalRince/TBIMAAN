@@ -111,7 +111,7 @@ fun ReadKeuanganScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (!isGranted) {
-            Toast.makeText(context, "Izin notifikasi ditolak.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Izin notifikasi ditolak. Peringatan keuangan mungkin tidak muncul.", Toast.LENGTH_LONG).show()
         }
     }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -126,7 +126,6 @@ fun ReadKeuanganScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    // ---------------------------------
 
     LaunchedEffect(key1 = Unit) {
         sessionManager.idUser?.let {
@@ -230,7 +229,6 @@ fun ReadKeuanganScreen(
     }
 }
 
-// PERBAIKAN: Bottom Bar yang benar
 @Composable
 fun KeuanganBottomAppBar(navController: NavController, currentRoute: String?) {
     BottomAppBar(

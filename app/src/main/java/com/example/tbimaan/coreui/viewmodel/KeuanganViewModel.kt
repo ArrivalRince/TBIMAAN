@@ -51,45 +51,39 @@ class KeuanganViewModel : ViewModel() {
     // Di dalam class KeuanganViewModel
     fun loadData(currentUserId: Int?, context: Context) {
         if (currentUserId == null) {
-            _errorMessage.value = "Sesi pengguna tidak valid. Silakan login kembali."
-            _isLoading.value = false
+            _errorMessage.value = "Sesi pengguna tidak valid."
             return
         }
 
         viewModelScope.launch {
-            // Hanya tunjukkan loading jika list masih kosong
             if (_pemasukanList.value.isEmpty() && _pengeluaranList.value.isEmpty()) {
                 _isLoading.value = true
             }
+            _errorMessage.value = ""
 
             Log.d(TAG, "loadData: Memulai ambil data untuk User ID: $currentUserId")
-
-            // Memanggil repository.getKeuangan
             repository.getKeuangan(currentUserId) { responseList ->
-                // =======================================================
-                // ===          PERBAIKAN LOGIKA LOADING DI SINI         ===
-                // =======================================================
-                // 1. Langsung matikan loading setelah data dari jaringan diterima.
-                _isLoading.value = false
-
-                // 2. Lanjutkan proses pengolahan data.
+                _isLoading.value = false // Matikan loading setelah data diterima
                 if (responseList != null) {
                     try {
                         val entries = responseList.mapNotNull { it.toPemasukanEntry() }
+                        // Update state list
                         _pemasukanList.value = entries.filter { it.tipeTransaksi.equals("pemasukan", ignoreCase = true) }
                         _pengeluaranList.value = entries.filter { it.tipeTransaksi.equals("pengeluaran", ignoreCase = true) }
+
                         checkBalanceAndNotify(context)
+
                     } catch (e: Exception) {
                         _errorMessage.value = "Error saat memproses data: ${e.message}"
+                        Log.e(TAG, "Error parsing data: ", e)
                     }
                 } else {
                     _errorMessage.value = "Gagal mengambil data dari server."
+                    Log.e(TAG, "Gagal ambil data, responseList null")
                 }
-                // =======================================================
             }
         }
     }
-
 
     private fun checkBalanceAndNotify(context: Context) {
         val totalPemasukan = _pemasukanList.value.sumOf { it.jumlah }

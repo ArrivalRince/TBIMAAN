@@ -41,17 +41,7 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-private fun isGmailAddress(email: String): Boolean {
-    if (email.isBlank()) return false
-    // Memeriksa apakah email diakhiri dengan "@gmail.com" dan tidak hanya "@gmail.com"
-    return email.endsWith("@gmail.com", ignoreCase = true) && email.length > "@gmail.com".length
-}
 
-private fun isPasswordComplex(password: String): Boolean {
-    val passwordPattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$".toRegex()
-    return password.matches(passwordPattern)
-}
-// =========================================================
 
 @Composable
 fun SignInScreen(
@@ -157,14 +147,8 @@ fun SignInScreen(
                     Button(
                         onClick = {
                             // Validasi Email: Harus @gmail.com
-                            if (!isGmailAddress(email)) {
-                                Toast.makeText(context, "Email harus menggunakan @gmail.com", Toast.LENGTH_LONG).show()
-                                return@Button
-                            }
-
-                            // Validasi Password: Harus Kompleks
-                            if (!isPasswordComplex(password)) {
-                                Toast.makeText(context, "Password harus minimal 8 karakter, dengan kombinasi huruf besar, kecil, dan angka.", Toast.LENGTH_LONG).show()
+                            if (email.isBlank() || password.isBlank()) {
+                                Toast.makeText(context, "Email dan password tidak boleh kosong.", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
 

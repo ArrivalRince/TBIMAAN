@@ -41,6 +41,22 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
+// =======================================================================
+// ===           FUNGSI VALIDASI DIPINDAHKAN KE SINI (BENAR)           ===
+// =======================================================================
+private fun isGmailAddress(email: String): Boolean {
+    if (email.isBlank()) return false
+    return email.endsWith("@gmail.com", ignoreCase = true) && email.length > "@gmail.com".length
+}
+
+private fun isPasswordComplex(password: String): Boolean {
+    // Minimal 8 karakter, 1 huruf besar, 1 huruf kecil, 1 angka
+    val passwordPattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$".toRegex()
+    return password.matches(passwordPattern)
+}
+// =======================================================================
+
+
 @Composable
 fun SignUpScreen(
     onSignUpClick: () -> Unit,
@@ -191,8 +207,16 @@ fun SignUpScreen(
                                 Toast.makeText(context, "Semua kolom wajib diisi", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
+                            if (!isGmailAddress(email)) {
+                                Toast.makeText(context, "Email harus valid dan menggunakan @gmail.com", Toast.LENGTH_LONG).show()
+                                return@Button
+                            }
+                            if (!isPasswordComplex(password)) {
+                                Toast.makeText(context, "Password harus minimal 8 karakter, mengandung huruf besar, kecil, dan angka.", Toast.LENGTH_LONG).show()
+                                return@Button
+                            }
                             if (password != confirmPassword) {
-                                Toast.makeText(context, "Password dan konfirmasi password tidak cocok", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Password dan konfirmasi password tidak cocok.", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
                             if (!isTermsChecked) {
