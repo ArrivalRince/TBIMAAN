@@ -1,6 +1,7 @@
 package com.example.tbimaan.network
 
 import com.example.tbimaan.model.InventarisResponse
+import com.example.tbimaan.model.KegiatanResponse
 import com.example.tbimaan.model.KeuanganResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -13,12 +14,8 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
-import retrofit2.http.Query // <-- TAMBAHKAN BARIS INI
+import retrofit2.http.Query
 
-
-/** ---------------------------
- *  AUTH MODELS
- *  -------------------------- */
 data class RegisterRequest(
     val nama_masjid: String,
     val email: String,
@@ -26,14 +23,9 @@ data class RegisterRequest(
     val alamat: String
 )
 
-data class RegisterResponse(
-    val message: String
-)
+data class RegisterResponse(val message: String)
 
-data class LoginRequest(
-    val email: String,
-    val password: String
-)
+data class LoginRequest(val email: String, val password: String)
 
 data class UserData(
     val id_user: Int,
@@ -48,38 +40,49 @@ data class LoginResponse(
     val user: UserData?
 )
 
-/** ---------------------------
- *  KEGIATAN MODELS
- *  -------------------------- */
-data class KegiatanDto(
-    val id_kegiatan: Int? = null,
-    val id_user: Int,
-    val nama_kegiatan: String,
-    val tanggal_kegiatan: String,
-    val waktu_kegiatan: String? = null,
-    val lokasi: String? = null,
-    val penanggungjawab: String? = null,
-    val deskripsi: String? = null,
-    val status_kegiatan: String? = null,
-    val foto_kegiatan: String? = null
+// =========================
+// ✅ FCM MODELS (FIX)
+// =========================
+data class FcmTokenRequest(
+    val userId: Int,
+    val fcmToken: String
 )
 
-/**
- * Interface Retrofit yang mendefinisikan semua endpoint API.
- */
+data class FcmSendRequest(
+    val userId: Int,
+    val title: String? = null,
+    val body: String? = null
+)
+
+
+
 interface ApiService {
 
-    // ========== ENDPOINT AUTENTIKASI ==========
+    // =========================
+    // ✅ FCM INVENTARIS (SINKRON DENGAN BACKEND ROUTES)
+    // =========================
+    // SIMPAN TOKEN (dipanggil setelah login)
+    @POST("fcm/token")
+    fun saveInventoryToken(@Body request: FcmTokenRequest): Call<Map<String, String>>
+
+    // (Optional) kirim notif manual dari backend
+    @POST("fcm/send")
+    fun sendInventoryNotification(@Body request: FcmSendRequest): Call<Map<String, String>>
+
+    // =========================
+    // AUTH
+    // =========================
     @POST("api/auth/register")
     fun registerUser(@Body request: RegisterRequest): Call<RegisterResponse>
 
     @POST("api/auth/login")
     fun loginUser(@Body request: LoginRequest): Call<LoginResponse>
 
-    // ========== ENDPOINT KEUANGAN ==========
+    // =========================
+    // KEUANGAN
+    // =========================
     @GET("api/keuangan")
     fun getKeuangan(@Query("id_user") idUser: Int): Call<List<KeuanganResponse>>
-    // =====================================================
 
     @GET("api/keuangan/{id}")
     fun getKeuanganById(@Path("id") id: String): Call<KeuanganResponse>
@@ -109,24 +112,15 @@ interface ApiService {
     @DELETE("api/keuangan/{id}")
     fun deleteKeuangan(@Path("id") id: String): Call<Void>
 
-    // =================================================================
-    // === PERBAIKAN ENDPOINT INVENTARIS: DISELARASKAN DENGAN EXPRESS ===
-    // =================================================================
-
-    // READ All Inventaris
-    // 🔹 Ambil semua inventaris berdasarkan id_user
+    // =========================
+    // INVENTARIS
+    // =========================
     @GET("api/inventaris")
-    fun getInventaris(
-        @Query("id_user") idUser: Int
-    ): Call<List<InventarisResponse>>
+    fun getInventaris(@Query("id_user") idUser: Int): Call<List<InventarisResponse>>
 
-    // 🔹 Ambil inventaris berdasarkan id_inventaris
     @GET("api/inventaris/{id}")
-    fun getInventarisById(
-        @Path("id") id: String
-    ): Call<InventarisResponse>
+    fun getInventarisById(@Path("id") id: String): Call<InventarisResponse>
 
-    // CREATE Inventaris
     @Multipart
     @POST("api/inventaris")
     fun createInventaris(
@@ -138,14 +132,9 @@ interface ApiService {
         @Part foto_barang: MultipartBody.Part
     ): Call<InventarisResponse>
 
-
-    // DELETE Inventaris
     @DELETE("api/inventaris/{id}")
-    fun deleteInventaris(
-        @Path("id") id: String
-    ): Call<InventarisResponse>
+    fun deleteInventaris(@Path("id") id: String): Call<InventarisResponse>
 
-    // UPDATE Inventaris
     @Multipart
     @PUT("api/inventaris/{id}")
     fun updateInventaris(
@@ -157,31 +146,39 @@ interface ApiService {
         @Part foto_barang: MultipartBody.Part?
     ): Call<InventarisResponse>
 
-
-    // ========== ENDPOINT KEGIATAN (DITAMBAHKAN) ==========
-    // Note: disesuaikan dengan base path 'api/kegiatan' agar konsisten dengan endpoint lain
+    // =========================
+// KEGIATAN
+// =========================
 
     @GET("api/kegiatan")
-    fun getKegiatan(): Call<List<KegiatanDto>>
+    fun getKegiatan(
+        @Query("id_user") idUser: Int
+    ): Call<List<KegiatanResponse>>
 
     @GET("api/kegiatan/{id}")
-    fun getKegiatanById(@Path("id") id: String): Call<KegiatanDto>
+    fun getKegiatanById(
+        @Path("id") id: String
+    ): Call<KegiatanResponse>
 
     @POST("api/kegiatan")
-    fun createKegiatan(@Body kegiatan: KegiatanDto): Call<KegiatanDto>
+    fun createKegiatan(
+        @Body kegiatan: KegiatanResponse
+    ): Call<KegiatanResponse>
 
     @PUT("api/kegiatan/{id}")
     fun updateKegiatan(
         @Path("id") id: String,
-        @Body kegiatan: KegiatanDto
-    ): Call<KegiatanDto>
+        @Body kegiatan: KegiatanResponse
+    ): Call<KegiatanResponse>
 
     @DELETE("api/kegiatan/{id}")
-    fun deleteKegiatan(@Path("id") id: String): Call<Void>
+    fun deleteKegiatan(
+        @Path("id") id: String
+    ): Call<Void>
 
-    /* =========================
-     * KEGIATAN (MULTIPART)
-     * ========================= */
+    // =========================
+// KEGIATAN (MULTIPART CREATE)
+// =========================
     @Multipart
     @POST("api/kegiatan")
     fun createKegiatanMultipart(
@@ -193,14 +190,15 @@ interface ApiService {
         @Part("deskripsi") deskripsi: RequestBody? = null,
         @Part("status_kegiatan") statusKegiatan: RequestBody? = null,
         @Part foto_kegiatan: MultipartBody.Part? = null
-    ): Call<KegiatanDto>
+    ): Call<KegiatanResponse>
 
-    // ========== ENDPOINT KEGIATAN (MULTIPART UPDATE) ==========
+    // =========================
+// KEGIATAN (MULTIPART UPDATE)
+// =========================
     @Multipart
     @PUT("api/kegiatan/{id}")
     fun updateKegiatanMultipart(
         @Path("id") id: String,
-
         @Part("id_user") idUser: RequestBody,
         @Part("nama_kegiatan") namaKegiatan: RequestBody,
         @Part("tanggal_kegiatan") tanggalKegiatan: RequestBody,
@@ -208,7 +206,6 @@ interface ApiService {
         @Part("penanggungjawab") penanggungjawab: RequestBody? = null,
         @Part("deskripsi") deskripsi: RequestBody? = null,
         @Part("status_kegiatan") statusKegiatan: RequestBody? = null,
-
         @Part foto_kegiatan: MultipartBody.Part? = null
-    ): Call<KegiatanDto>
+    ): Call<KegiatanResponse>
 }

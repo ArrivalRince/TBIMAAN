@@ -5,15 +5,42 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,10 +60,8 @@ import com.example.tbimaan.coreui.components.SecondaryButton
 import com.example.tbimaan.coreui.utils.getTempUri
 import com.example.tbimaan.coreui.utils.uriToFile
 import com.example.tbimaan.coreui.viewmodel.KegiatanViewModel
-import java.io.File
+import com.example.tbimaan.model.SessionManager
 import java.util.Calendar
-import com.example.tbimaan.model.SessionManager // <-- GANTI UserSession DENGAN INI
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,7 +110,6 @@ fun CreateKegiatanScreen(
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
         ).apply {
-            // 🔥 Tidak bisa pilih tanggal sebelum hari ini
             datePicker.minDate = System.currentTimeMillis()
         }
     }
@@ -255,7 +279,6 @@ fun CreateKegiatanScreen(
                                 try { uriToFile(context, it) } catch (e: Exception) { null }
                             }
 
-                            // ===== VALIDASI =====
                             if (userId == null) {
                                 Toast.makeText(context, "Sesi tidak valid, silakan login ulang", Toast.LENGTH_LONG).show()
                                 return@PrimaryButton
@@ -282,7 +305,7 @@ fun CreateKegiatanScreen(
                                 deskripsi = deskripsi,
                                 status = status,
                                 fotoFile = file,
-                                context = context,
+                                context = context
                             ) { success, message ->
                                 isLoading = false
                                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
@@ -295,7 +318,6 @@ fun CreateKegiatanScreen(
                 Spacer(Modifier.height(32.dp))
             }
 
-            // ===== LOADING OVERLAY =====
             if (isLoading) {
                 Box(
                     modifier = Modifier
@@ -309,7 +331,6 @@ fun CreateKegiatanScreen(
         }
     }
 
-    // ===== DIALOG FOTO =====
     if (showImageDialog) {
         AlertDialog(
             onDismissRequest = { showImageDialog = false },

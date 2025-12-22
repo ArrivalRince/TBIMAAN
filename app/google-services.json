@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "894114002478",
+    "project_id": "imaan-d3a27",
+    "storage_bucket": "imaan-d3a27.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894114002478:android:46f4f916d28380a82551bf",
+        "android_client_info": {
+          "package_name": "com.example.tbimaan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwS13Bq1ZLycPOdNU43Of0q8Kb-nmvr1o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894114002478:android:3a10e119449d11812551bf",
+        "android_client_info": {
+          "package_name": "com.ptb.imaan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwS13Bq1ZLycPOdNU43Of0q8Kb-nmvr1o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -12,7 +12,9 @@ import com.example.tbimaan.coreui.screen.Kegiatan.ReadKegiatanScreen
 import com.example.tbimaan.coreui.screen.Kegiatan.UpdateKegiatanScreen
 import com.example.tbimaan.coreui.viewmodel.KegiatanViewModel
 
-fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
+fun NavGraphBuilder.kegiatanNavGraph(
+    navController: NavController
+) {
 
     navigation(
         startDestination = "read_kegiatan",
@@ -25,25 +27,24 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
             }
         }
 
-        // =======================
+        // =====================
         // READ KEGIATAN
-        // =======================
+        // =====================
         composable("read_kegiatan") {
+            val kegiatanViewModel: KegiatanViewModel = viewModel()
+
             ReadKegiatanScreen(
                 navController = navController,
-                onNavigate = onNavigate,
+                viewModel = kegiatanViewModel,
                 onAddClick = {
                     navController.navigate("create_kegiatan")
-                },
-                onEditClick = { route ->
-                    navController.navigate(route)
                 }
             )
         }
 
-        // =======================
+        // =====================
         // CREATE KEGIATAN
-        // =======================
+        // =====================
         composable("create_kegiatan") {
             val kegiatanViewModel: KegiatanViewModel = viewModel()
 
@@ -53,13 +54,13 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
             )
         }
 
-        // =======================
+        // =====================
         // UPDATE KEGIATAN
-        // =======================
+        // =====================
         composable(
-            route = "update_kegiatan/{idKegiatan}/{nama}/{tanggal}/{lokasi}/{penanggungjawab}/{deskripsi}/{status}/{foto}",
+            route = "update_kegiatan/{id}/{nama}/{tanggal}/{lokasi}/{penanggungjawab}/{deskripsi}/{status}/{foto}",
             arguments = listOf(
-                navArgument("idKegiatan") { type = NavType.IntType },
+                navArgument("id") { type = NavType.StringType },
                 navArgument("nama") { type = NavType.StringType },
                 navArgument("tanggal") { type = NavType.StringType },
                 navArgument("lokasi") { type = NavType.StringType },
@@ -72,14 +73,15 @@ fun NavGraphBuilder.kegiatanNavGraph(navController: NavController) {
                     defaultValue = ""
                 }
             )
-        ) { backStackEntry ->
+        ) { entry ->
 
-            val args = backStackEntry.arguments!!
+            val kegiatanViewModel: KegiatanViewModel = viewModel()
+            val args = entry.arguments!!
 
             UpdateKegiatanScreen(
                 navController = navController,
-                idKegiatan = args.getInt("idKegiatan"),
-                onNavigate = onNavigate,
+                viewModel = kegiatanViewModel,
+                idKegiatan = args.getString("id").orEmpty(),
                 namaAwal = args.getString("nama").orEmpty(),
                 tanggalAwal = args.getString("tanggal").orEmpty(),
                 lokasiAwal = args.getString("lokasi").orEmpty(),

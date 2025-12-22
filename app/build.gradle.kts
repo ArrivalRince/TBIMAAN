@@ -2,7 +2,9 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     // ✅ Tambahkan plugin Compose Compiler. Ini WAJIB ada.
-    id("org.jetbrains.kotlin.plugin.compose")}
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.gms.google-services")
+}
 
 android {
     namespace = "com.example.tbimaan"
@@ -88,4 +90,12 @@ dependencies {
     // Ketergantungan Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    //firebase
+    implementation(platform("com.google.firebase:firebase-bom:34.7.0"))
+    implementation("com.google.firebase:firebase-analytics")
+
+    //firebase fcm
+    implementation("com.google.firebase:firebase-messaging")
+
 }

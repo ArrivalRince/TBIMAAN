@@ -1,10 +1,19 @@
 package com.example.tbimaan.coreui.screen.Home
 
 import android.util.Log
+import android.util.Patterns
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,9 +21,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,13 +55,13 @@ import androidx.compose.ui.unit.sp
 import com.example.tbimaan.R
 import com.example.tbimaan.model.SessionManager
 import com.example.tbimaan.network.ApiClient
+import com.example.tbimaan.network.FcmTokenRequest
 import com.example.tbimaan.network.LoginRequest
 import com.example.tbimaan.network.LoginResponse
+import com.google.firebase.messaging.FirebaseMessaging
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-
-
 
 @Composable
 fun SignInScreen(
@@ -52,6 +72,7 @@ fun SignInScreen(
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
 
@@ -59,7 +80,14 @@ fun SignInScreen(
     val lightGray = Color(0xFFF5F5F5)
     val linkColor = Color(0xFF0062CC)
 
+    fun goToApp(namaMasjid: String) {
+        Toast.makeText(context, "Selamat datang $namaMasjid", Toast.LENGTH_SHORT).show()
+        isLoading = false
+        onSignInClick()
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
+
         Image(
             painter = painterResource(id = R.drawable.background),
             contentDescription = "Background",
@@ -75,6 +103,7 @@ fun SignInScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+
             Spacer(modifier = Modifier.height(180.dp))
 
             Card(
@@ -88,19 +117,23 @@ fun SignInScreen(
                         .padding(top = 80.dp, start = 24.dp, end = 24.dp, bottom = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+
                     Text(
                         text = "Sign In",
                         fontSize = 36.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
+
                     Spacer(modifier = Modifier.height(8.dp))
+
                     Text(
                         text = "Menjaga amanah dan privasi dengan penuh keimanan",
                         fontSize = 14.sp,
                         color = Color.Gray,
                         textAlign = TextAlign.Center
                     )
+
                     Spacer(modifier = Modifier.height(32.dp))
 
                     OutlinedTextField(
@@ -118,6 +151,7 @@ fun SignInScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         singleLine = true
                     )
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     OutlinedTextField(
@@ -132,68 +166,126 @@ fun SignInScreen(
                             unfocusedContainerColor = lightGray,
                             focusedContainerColor = lightGray
                         ),
-                        visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        visualTransformation = if (isPasswordVisible)
+                            VisualTransformation.None
+                        else
+                            PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         singleLine = true,
                         trailingIcon = {
-                            val image = if (isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                            val image =
+                                if (isPasswordVisible) Icons.Filled.Visibility
+                                else Icons.Filled.VisibilityOff
+
                             IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                                 Icon(imageVector = image, contentDescription = null)
                             }
                         }
                     )
+
                     Spacer(modifier = Modifier.height(32.dp))
 
                     Button(
                         onClick = {
-                            // Validasi Email: Harus @gmail.com
-                            if (email.isBlank() || password.isBlank()) {
+                            if (isLoading) return@Button
+
+                            val emailTrim = email.trim()
+                            val passwordTrim = password
+
+                            if (emailTrim.isBlank() || passwordTrim.isBlank()) {
                                 Toast.makeText(context, "Email dan password tidak boleh kosong.", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
 
+                            if (!Patterns.EMAIL_ADDRESS.matcher(emailTrim).matches()) {
+                                Toast.makeText(context, "Format email tidak valid.", Toast.LENGTH_LONG).show()
+                                return@Button
+                            }
+
                             isLoading = true
-                            val request = LoginRequest(email = email, password = password)
-                            Log.d("SignIn", "Request: $request")
+
+                            val request = LoginRequest(email = emailTrim, password = passwordTrim)
 
                             ApiClient.instance.loginUser(request)
                                 .enqueue(object : Callback<LoginResponse> {
-                                    override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
-                                        isLoading = false
-                                        Log.d("SignIn", "HTTP ${response.code()} body=${response.body()}")
 
-                                        if (response.isSuccessful) {
-                                            val loginResponse = response.body()
-                                            val user = loginResponse?.user
-
-                                            if (user != null) {
-                                                sessionManager.createLoginSession(
-                                                    idUser = user.id_user,
-                                                    namaMasjid = user.nama_masjid,
-                                                    email = user.email,
-                                                    alamat = user.alamat
-                                                )
-                                                Log.d("SignInScreen", "Login Berhasil. Sesi untuk User ID: ${user.id_user} telah disimpan.")
-                                                Toast.makeText(context, "Selamat datang ${user.nama_masjid}", Toast.LENGTH_SHORT).show()
-                                                onSignInClick()
-                                            } else {
-                                                Toast.makeText(context, "Login gagal: Data pengguna tidak valid.", Toast.LENGTH_LONG).show()
-                                                Log.e("SignIn", "Login sukses tapi data user null.")
-                                            }
-                                        } else {
-                                            val errorMsg = when (response.code()) {
-                                                401 -> "Email atau password salah."
-                                                else -> "Login gagal (Error: ${response.code()})"
-                                            }
-                                            Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
-                                            Log.e("SignIn", "Login gagal: code=${response.code()} err=${response.errorBody()?.string()}")
+                                    override fun onResponse(
+                                        call: Call<LoginResponse>,
+                                        response: Response<LoginResponse>
+                                    ) {
+                                        if (!response.isSuccessful) {
+                                            isLoading = false
+                                            Toast.makeText(
+                                                context,
+                                                "Email atau password salah",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                            return
                                         }
+
+                                        val user = response.body()?.user
+                                        if (user == null) {
+                                            isLoading = false
+                                            Toast.makeText(
+                                                context,
+                                                "Login gagal: Data user tidak valid",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                            return
+                                        }
+
+                                        Log.d("FCM", "LOGIN OK userId=${user.id_user}")
+
+                                        sessionManager.createLoginSession(
+                                            idUser = user.id_user,
+                                            namaMasjid = user.nama_masjid,
+                                            email = user.email,
+                                            alamat = user.alamat
+                                        )
+
+                                        // Ambil token & simpan ke backend (tidak menghalangi masuk)
+                                        FirebaseMessaging.getInstance().token
+                                            .addOnSuccessListener { token ->
+                                                Log.d("FCM", "FCM Token: $token")
+
+                                                val req = FcmTokenRequest(
+                                                    userId = user.id_user,
+                                                    fcmToken = token
+                                                )
+
+                                                ApiClient.instance.saveInventoryToken(req)
+                                                    .enqueue(object :
+                                                        Callback<Map<String, String>> {
+
+                                                        override fun onResponse(
+                                                            call: Call<Map<String, String>>,
+                                                            response: Response<Map<String, String>>
+                                                        ) {
+                                                            Log.d(
+                                                                "FCM",
+                                                                "save token code=${response.code()} body=${response.body()}"
+                                                            )
+                                                        }
+
+                                                        override fun onFailure(
+                                                            call: Call<Map<String, String>>,
+                                                            t: Throwable
+                                                        ) {
+                                                            Log.e(
+                                                                "FCM",
+                                                                "save token error=${t.message}"
+                                                            )
+                                                        }
+                                                    })
+                                            }
+                                            .addOnFailureListener { e ->
+                                                Log.e("FCM", "get token error=${e.message}")
+                                            }
                                     }
 
                                     override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
                                         isLoading = false
-                                        Log.e("SignIn", "onFailure: ${t.message}", t)
-                                        Toast.makeText(context, "Gagal koneksi ke server: ${t.message}", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, "Gagal koneksi: ${t.message}", Toast.LENGTH_LONG).show()
                                     }
                                 })
                         },
@@ -211,7 +303,11 @@ fun SignInScreen(
                                 modifier = Modifier.size(24.dp)
                             )
                         } else {
-                            Text("Sign In", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "Sign In",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
 
@@ -220,16 +316,13 @@ fun SignInScreen(
                     Text(
                         modifier = Modifier.clickable(onClick = onSignUpClick),
                         text = buildAnnotatedString {
-                            withStyle(style = SpanStyle(color = Color.Gray)) {
-                                append("Tidak punya akun? ")
-                            }
-                            withStyle(style = SpanStyle(color = linkColor, fontWeight = FontWeight.Bold)) {
-                                append("Sign Up")
-                            }
+                            withStyle(style = SpanStyle(color = Color.Gray)) { append("Tidak punya akun? ") }
+                            withStyle(style = SpanStyle(color = linkColor, fontWeight = FontWeight.Bold)) { append("Sign Up") }
                         }
                     )
                 }
             }
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }

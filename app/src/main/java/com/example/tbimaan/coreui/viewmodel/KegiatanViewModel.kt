@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tbimaan.coreui.Notification.KegiatanNotification
 import com.example.tbimaan.coreui.repository.KegiatanRepository
-import com.example.tbimaan.network.KegiatanDto
+import com.example.tbimaan.model.KegiatanResponse
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -23,21 +23,23 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-// Pastikan data class ini ada dan sesuai
+// =========================
+// UI MODEL
+// =========================
 data class KegiatanEntry(
     val id: String,
     val nama: String,
-    val tanggal: String, // Format dd MMMM yyyy
-    val waktu: String?,
+    val tanggal: String, // dd MMMM yyyy
     val lokasi: String?,
     val penanggungjawab: String?,
     val deskripsi: String?,
     val status: String?,
     val fotoUrl: String?,
-    val originalDate: Date? // Tanggal asli untuk komparasi
+    val originalDate: Date?
 )
 
 class KegiatanViewModel : ViewModel() {
+
     private val repository = KegiatanRepository()
     private val TAG = "KegiatanViewModel"
 
@@ -53,47 +55,69 @@ class KegiatanViewModel : ViewModel() {
     private val _errorMessage = mutableStateOf("")
     val errorMessage: State<String> = _errorMessage
 
-    // --- FUNGSI BARU UNTUK LOAD DATA & NOTIFIKASI ---
-    fun loadKegiatan(context: Context) {
+    // =========================
+    // LOAD KEGIATAN + NOTIFIKASI
+    // =========================
+    // =========================
+// LOAD KEGIATAN + NOTIFIKASI (BY USER)
+// =========================
+    fun loadKegiatan(
+        context: Context,
+        idUser: Int
+    ) {
         if (_isLoading.value) return
+
         viewModelScope.launch {
             if (_kegiatanList.value.isEmpty()) _isLoading.value = true
             _errorMessage.value = ""
-            repository.getKegiatan { responseList ->
+
+            repository.getKegiatan(idUser) { responseList ->
                 _isLoading.value = false
+
                 if (responseList != null) {
-                    _kegiatanList.value = responseList.mapNotNull { it.toKegiatanEntry() }
-                    Log.d(TAG, "loadKegiatan: loaded ${_kegiatanList.value.size} items. Checking notifications.")
-                    checkUpcomingEventsAndNotify(context) // Panggil pengecekan notifikasi
+                    _kegiatanList.value =
+                        responseList.mapNotNull { it.toKegiatanEntry() }
+
+                    Log.d(
+                        TAG,
+                        "loadKegiatan: loaded ${_kegiatanList.value.size} items for user $idUser"
+                    )
+
+                    checkUpcomingEventsAndNotify(context)
                 } else {
                     _errorMessage.value = "Gagal mengambil data kegiatan."
-                    Log.e(TAG, "loadKegiatan: response is null")
+                    Log.e(TAG, "loadKegiatan: response null")
                 }
             }
         }
     }
 
-    // --- FUNGSI BARU UNTUK LOGIKA NOTIFIKASI H-1 ---
+    // =========================
+    // NOTIFIKASI H-1
+    // =========================
     private fun checkUpcomingEventsAndNotify(context: Context) {
-        val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }.time
-        val tomorrowStartOfDay = getStartOfDay(tomorrow)
+        val tomorrow = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+        }.time
 
-        val upcomingEvents = _kegiatanList.value.filter { kegiatan ->
-            // Gunakan originalDate yang sudah pasti berformat Date
-            kegiatan.originalDate != null && getStartOfDay(kegiatan.originalDate) == tomorrowStartOfDay &&
-                    kegiatan.status.equals("Akan Datang", ignoreCase = true)
+        val tomorrowStart = getStartOfDay(tomorrow)
+
+        val upcomingEvents = _kegiatanList.value.filter {
+            it.originalDate != null &&
+                    getStartOfDay(it.originalDate) == tomorrowStart &&
+                    it.status.equals("Akan Datang", ignoreCase = true)
         }
 
         if (upcomingEvents.isNotEmpty()) {
-            Log.d(TAG, "${upcomingEvents.size} kegiatan ditemukan untuk besok. MENAMPILKAN NOTIFIKASI.")
-            KegiatanNotification.showEventReminderNotification(context, upcomingEvents)
+            KegiatanNotification.showEventReminderNotification(
+                context,
+                upcomingEvents
+            )
         } else {
-            Log.d(TAG, "Tidak ada kegiatan untuk besok. Membatalkan notifikasi jika ada.")
             KegiatanNotification.cancelEventReminderNotification(context)
         }
     }
 
-    // Helper untuk membandingkan tanggal tanpa memperdulikan jam
     private fun getStartOfDay(date: Date): Date {
         return Calendar.getInstance().apply {
             time = date
@@ -104,113 +128,189 @@ class KegiatanViewModel : ViewModel() {
         }.time
     }
 
-    // --- PERBAIKAN CREATE ---
+    // =========================
+    // CREATE KEGIATAN
+    // =========================
     fun createKegiatanMultipart(
         idUser: String,
         nama: String,
-        tanggal: String, // Format yyyy-MM-dd
+        tanggal: String,
         lokasi: String?,
         penanggungjawab: String?,
         deskripsi: String?,
         status: String,
         fotoFile: File?,
-        context: Context, // <-- Tambahkan context
+        context: Context,
         onResult: (Boolean, String) -> Unit
     ) {
         viewModelScope.launch {
             try {
-                fun textPart(value: String?): RequestBody? = value?.takeIf { it.isNotBlank() }?.toRequestBody("text/plain".toMediaTypeOrNull())
-
-                val idUserPart = idUser.toRequestBody("text/plain".toMediaTypeOrNull())
-                val namaPart = nama.toRequestBody("text/plain".toMediaTypeOrNull())
-                val tanggalPart = tanggal.toRequestBody("text/plain".toMediaTypeOrNull())
-                val statusPart = status.toRequestBody("text/plain".toMediaTypeOrNull())
+                fun textPart(v: String?): RequestBody? =
+                    v?.takeIf { it.isNotBlank() }
+                        ?.toRequestBody("text/plain".toMediaTypeOrNull())
 
                 val fotoPart = fotoFile?.let {
-                    MultipartBody.Part.createFormData("foto_kegiatan", it.name, it.asRequestBody("image/*".toMediaTypeOrNull()))
+                    MultipartBody.Part.createFormData(
+                        "foto_kegiatan",
+                        it.name,
+                        it.asRequestBody("image/*".toMediaTypeOrNull())
+                    )
                 }
 
                 repository.createKegiatanMultipart(
-                    idUser = idUserPart,
-                    namaKegiatan = namaPart,
-                    tanggalKegiatan = tanggalPart,
+                    idUser = textPart(idUser)!!,
+                    namaKegiatan = textPart(nama)!!,
+                    tanggalKegiatan = textPart(tanggal)!!,
                     lokasi = textPart(lokasi),
                     penanggungjawab = textPart(penanggungjawab),
                     deskripsi = textPart(deskripsi),
-                    statusKegiatan = statusPart,
+                    statusKegiatan = textPart(status)!!,
                     foto = fotoPart
-                ) { isSuccess, message ->
-                    if (isSuccess) {
-                        loadKegiatan(context) // <-- Panggil loadKegiatan di sini untuk refresh
-                    }
-                    onResult(isSuccess, message)
+                ) { success: Boolean, message: String ->
+                    if (success) loadKegiatan(context, idUser.toInt())
+                    onResult(success, message)
                 }
+
             } catch (e: Exception) {
-                Log.e(TAG, "createKegiatanMultipart error: ${e.message}")
-                onResult(false, "Gagal menyimpan kegiatan: ${e.message}")
+                Log.e(TAG, "createKegiatan error", e)
+                onResult(false, e.message ?: "Gagal menyimpan kegiatan")
             }
         }
     }
 
-    // --- PERBAIKAN DELETE ---
-    fun deleteKegiatan(id: String, context: Context, onResult: (Boolean, String) -> Unit) {
+    // =========================
+    // UPDATE KEGIATAN (MULTIPART)
+    // =========================
+    fun updateKegiatanMultipart(
+        id: String,
+        idUser: String,
+        nama: String,
+        tanggal: String,
+        lokasi: String?,
+        penanggungjawab: String?,
+        deskripsi: String?,
+        status: String,
+        fotoFile: File?,
+        context: Context,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                fun textPart(v: String?): RequestBody? =
+                    v?.takeIf { it.isNotBlank() }
+                        ?.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                val fotoPart = fotoFile?.let {
+                    MultipartBody.Part.createFormData(
+                        "foto_kegiatan",
+                        it.name,
+                        it.asRequestBody("image/*".toMediaTypeOrNull())
+                    )
+                }
+
+                repository.updateKegiatanMultipart(
+                    id = id,
+                    idUser = textPart(idUser)!!,
+                    namaKegiatan = textPart(nama)!!,
+                    tanggalKegiatan = textPart(tanggal)!!,
+                    lokasi = textPart(lokasi),
+                    penanggungjawab = textPart(penanggungjawab),
+                    deskripsi = textPart(deskripsi),
+                    statusKegiatan = textPart(status)!!,
+                    foto = fotoPart
+                ) { success, message ->
+                    if (success) loadKegiatan(context, idUser.toInt())
+                    onResult(success, message)
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "updateKegiatan error", e)
+                onResult(false, e.message ?: "Gagal update kegiatan")
+            }
+        }
+    }
+
+    // =========================
+    // DELETE KEGIATAN
+    // =========================
+    fun deleteKegiatan(
+        id: String,
+        context: Context,
+        idUser: Int,
+        onResult: (Boolean, String) -> Unit
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
-            repository.deleteKegiatan(id) { isSuccess, message ->
-                if (isSuccess) {
-                    loadKegiatan(context) // <-- Panggil loadKegiatan di sini untuk refresh
-                } else {
-                    _errorMessage.value = message
-                }
+
+            repository.deleteKegiatan(id) { success, message ->
+                if (success) loadKegiatan(context, idUser)
+                else _errorMessage.value = message
                 _isLoading.value = false
-                onResult(isSuccess, message)
+                onResult(success, message)
             }
         }
     }
 
+    // =========================
+    // GET DETAIL
+    // =========================
     fun getKegiatanById(id: String) {
         viewModelScope.launch {
             _isLoading.value = true
-            repository.getKegiatanById(id) { dto ->
-                _selectedItem.value = dto?.toKegiatanEntry()
-                if (dto == null) _errorMessage.value = "Gagal memuat detail kegiatan."
+
+            repository.getKegiatanById(id) { response ->
+                _selectedItem.value = response?.toKegiatanEntry()
+
+                if (response == null) {
+                    _errorMessage.value = "Gagal memuat detail kegiatan."
+                }
+
                 _isLoading.value = false
             }
         }
     }
 
-    fun clearSelectedItem() { _selectedItem.value = null }
+    fun clearSelectedItem() {
+        _selectedItem.value = null
+    }
 
-    // --- Helper konversi dari KegiatanDto ke KegiatanEntry untuk UI ---
-    private fun KegiatanDto.toKegiatanEntry(): KegiatanEntry? {
-        if (this.id_kegiatan == null) return null
+    // =========================
+    // MAPPER Response → UI
+    // =========================
+    private fun KegiatanResponse.toKegiatanEntry(): KegiatanEntry? {
+        if (idKegiatan == null) return null
 
-        val dateFormats = listOf(
-            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") },
+        val formats = listOf(
+            SimpleDateFormat(
+                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                Locale.getDefault()
+            ).apply { timeZone = TimeZone.getTimeZone("UTC") },
             SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         )
 
         var parsedDate: Date? = null
-        for (format in dateFormats) {
+        for (f in formats) {
             try {
-                parsedDate = format.parse(this.tanggal_kegiatan ?: "")
+                parsedDate = f.parse(tanggalKegiatan ?: "")
                 if (parsedDate != null) break
-            } catch (e: ParseException) { /* Lanjutkan */ }
+            } catch (_: ParseException) {}
         }
 
-        val tanggalFormatted = parsedDate?.let { SimpleDateFormat("dd MMMM yyyy", Locale("in", "ID")).format(it) } ?: this.tanggal_kegiatan ?: "Tanggal Invalid"
+        val formattedDate =
+            parsedDate?.let {
+                SimpleDateFormat("dd MMMM yyyy", Locale("in", "ID")).format(it)
+            } ?: tanggalKegiatan ?: "-"
 
         return KegiatanEntry(
-            id = this.id_kegiatan.toString(),
-            nama = this.nama_kegiatan ?: "",
-            tanggal = tanggalFormatted,
-            waktu = this.waktu_kegiatan,
-            lokasi = this.lokasi,
-            penanggungjawab = this.penanggungjawab,
-            deskripsi = this.deskripsi,
-            status = this.status_kegiatan,
-            fotoUrl = this.foto_kegiatan,
-            originalDate = parsedDate // Simpan tanggal asli
+            id = idKegiatan.toString(),
+            nama = namaKegiatan ?: "",
+            tanggal = formattedDate,
+            lokasi = lokasi,
+            penanggungjawab = penanggungjawab,
+            deskripsi = deskripsi,
+            status = statusKegiatan,
+            fotoUrl = fotoKegiatan,
+            originalDate = parsedDate
         )
     }
 }

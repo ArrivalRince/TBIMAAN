@@ -4,21 +4,48 @@ import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Inventory
-import androidx.compose.material.icons.outlined.Paid
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -31,27 +58,18 @@ import com.example.tbimaan.R
 import com.example.tbimaan.coreui.components.BackButtonOnImage
 import com.example.tbimaan.coreui.components.PrimaryButton
 import com.example.tbimaan.coreui.components.SecondaryButton
-import com.example.tbimaan.coreui.navigation.KEGIATAN_GRAPH_ROUTE
 import com.example.tbimaan.coreui.utils.getTempUri
 import com.example.tbimaan.coreui.utils.uriToFile
-import com.example.tbimaan.model.SessionManager   // ✅ GANTI UserSession
-import com.example.tbimaan.network.ApiClient
-import com.example.tbimaan.network.KegiatanDto
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import com.example.tbimaan.coreui.viewmodel.KegiatanViewModel
+import com.example.tbimaan.model.SessionManager
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateKegiatanScreen(
     navController: NavController,
-    idKegiatan: Int,
-    onNavigate: (String) -> Unit,
+    viewModel: KegiatanViewModel,
+    idKegiatan: String,
     namaAwal: String,
     tanggalAwal: String,
     lokasiAwal: String,
@@ -61,7 +79,7 @@ fun UpdateKegiatanScreen(
     fotoAwal: String?
 ) {
     val context = LocalContext.current
-    val sessionManager = remember { SessionManager(context) } // ✅ SESSION
+    val sessionManager = remember { SessionManager(context) }
 
     // ================= STATE =================
     var nama by remember { mutableStateOf(namaAwal) }
@@ -76,363 +94,272 @@ fun UpdateKegiatanScreen(
 
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var tempUri by remember { mutableStateOf<Uri?>(null) }
-    var showDialog by remember { mutableStateOf(false) }
+    var showImageDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+
+    // ================= DATE PICKER =================
+    val calendar = Calendar.getInstance()
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, y, m, d ->
+            tanggal = "%04d-%02d-%02d".format(y, m + 1, d)
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
 
     // ================= IMAGE PICKER =================
     val galleryLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
-            if (it != null) imageUri = it
+            imageUri = it
         }
 
     val cameraLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) {
-            if (it) imageUri = tempUri
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success) imageUri = tempUri
         }
 
-    // ================= DATE PICKER =================
-    val calendar = remember { Calendar.getInstance() }
-    val datePickerDialog = remember {
-        DatePickerDialog(
-            context,
-            { _, year, month, day ->
-                tanggal = "%04d-%02d-%02d".format(year, month + 1, day)
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        )
-    }
+    // ================= UI =================
+    Scaffold(containerColor = Color.White) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+        ) {
 
-    Scaffold(
-        containerColor = Color.White,
-        bottomBar = {
-            KegiatanBottomAppBar(
-                onNavigate = onNavigate,
-                currentRoute = KEGIATAN_GRAPH_ROUTE
-            )
-        }
-    ) { padding ->
-
-        Box(modifier = Modifier.fillMaxSize()) {
-
-            Column(
+            // HEADER
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
+                    .fillMaxWidth()
+                    .height(180.dp)
             ) {
-
-                // ================= HEADER =================
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.masjiddua),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    BackButtonOnImage(
-                        onClick = { navController.popBackStack() },
-                        modifier = Modifier.align(Alignment.TopStart)
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Text(
-                    text = "Update Data Kegiatan",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E5B8A),
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                Image(
+                    painter = painterResource(R.drawable.masjiddua),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
+                BackButtonOnImage(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.align(Alignment.TopStart)
+                )
+            }
 
-                Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
 
-                // ================= FORM =================
-                Card(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(8.dp)
+            Text(
+                "Update Data Kegiatan",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E5B8A),
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            Card(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
 
-                        OutlinedTextField(
-                            value = nama,
-                            onValueChange = { nama = it },
-                            label = { Text("Nama Kegiatan") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    OutlinedTextField(
+                        value = nama,
+                        onValueChange = { nama = it },
+                        label = { Text("Nama Kegiatan") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        OutlinedTextField(
-                            value = tanggal,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Tanggal (YYYY-MM-DD)") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { datePickerDialog.show() },
-                            trailingIcon = {
-                                IconButton(onClick = { datePickerDialog.show() }) {
-                                    Icon(Icons.Default.DateRange, null)
-                                }
-                            }
-                        )
-
-                        OutlinedTextField(
-                            value = lokasi,
-                            onValueChange = { lokasi = it },
-                            label = { Text("Lokasi") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        OutlinedTextField(
-                            value = penanggungjawab,
-                            onValueChange = { penanggungjawab = it },
-                            label = { Text("Penanggungjawab") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        OutlinedTextField(
-                            value = deskripsi,
-                            onValueChange = { deskripsi = it },
-                            label = { Text("Deskripsi") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp)
-                        )
-
-                        ExposedDropdownMenuBox(
-                            expanded = statusExpanded,
-                            onExpandedChange = { statusExpanded = !statusExpanded }
-                        ) {
-                            OutlinedTextField(
-                                value = status,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Status") },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded)
-                                },
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
-                            )
-
-                            ExposedDropdownMenu(
-                                expanded = statusExpanded,
-                                onDismissRequest = { statusExpanded = false }
-                            ) {
-                                statusOptions.forEach { option ->
-                                    DropdownMenuItem(
-                                        text = { Text(option) },
-                                        onClick = {
-                                            status = option
-                                            statusExpanded = false
-                                        }
-                                    )
-                                }
+                    OutlinedTextField(
+                        value = tanggal,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Tanggal (YYYY-MM-DD)") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { datePickerDialog.show() },
+                        trailingIcon = {
+                            IconButton(onClick = { datePickerDialog.show() }) {
+                                Icon(Icons.Default.DateRange, null)
                             }
                         }
+                    )
 
-                        // ================= FOTO =================
-                        Box(
+                    OutlinedTextField(
+                        value = lokasi,
+                        onValueChange = { lokasi = it },
+                        label = { Text("Lokasi") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = penanggungjawab,
+                        onValueChange = { penanggungjawab = it },
+                        label = { Text("Penanggungjawab") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = deskripsi,
+                        onValueChange = { deskripsi = it },
+                        label = { Text("Deskripsi") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp)
+                    )
+
+                    // STATUS DROPDOWN
+                    ExposedDropdownMenuBox(
+                        expanded = statusExpanded,
+                        onExpandedChange = { statusExpanded = !statusExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = status,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Status") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(statusExpanded)
+                            },
                             modifier = Modifier
+                                .menuAnchor()
                                 .fillMaxWidth()
-                                .height(180.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0xFFF0F5F9))
-                                .border(1.dp, Color(0xFFDDEEFF), RoundedCornerShape(16.dp))
-                                .clickable { showDialog = true },
-                            contentAlignment = Alignment.Center
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = statusExpanded,
+                            onDismissRequest = { statusExpanded = false }
                         ) {
-                            when {
-                                imageUri != null -> {
-                                    AsyncImage(
-                                        model = imageUri,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                                !fotoAwal.isNullOrBlank() -> {
-                                    AsyncImage(
-                                        model = fotoAwal,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                                else -> {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(
-                                            Icons.Default.AddPhotoAlternate,
-                                            null,
-                                            tint = Color(0xFF1E5B8A),
-                                            modifier = Modifier.size(40.dp)
-                                        )
-                                        Spacer(Modifier.height(8.dp))
-                                        Text("Ubah Foto", color = Color(0xFF1E5B8A))
+                            statusOptions.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option) },
+                                    onClick = {
+                                        status = option
+                                        statusExpanded = false
                                     }
+                                )
+                            }
+                        }
+                    }
+
+                    // FOTO
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFF0F5F9))
+                            .border(1.dp, Color(0xFFDDEEFF), RoundedCornerShape(16.dp))
+                            .clickable { showImageDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        when {
+                            imageUri != null -> {
+                                AsyncImage(
+                                    model = imageUri,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            !fotoAwal.isNullOrBlank() -> {
+                                AsyncImage(
+                                    model = fotoAwal,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            else -> {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        Icons.Default.AddPhotoAlternate,
+                                        contentDescription = null,
+                                        tint = Color(0xFF1E5B8A),
+                                        modifier = Modifier.size(40.dp)
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text("Ubah Foto", color = Color(0xFF1E5B8A))
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(20.dp))
 
-                // ================= BUTTON =================
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
 
-                    SecondaryButton(
-                        text = "Batal",
-                        onClick = { navController.popBackStack() },
-                        modifier = Modifier.weight(1f)
-                    )
+                SecondaryButton(
+                    text = "Batal",
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.weight(1f)
+                )
 
-                    PrimaryButton(
-                        text = if (isLoading) "Menyimpan..." else "Update",
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            val userId = sessionManager.idUser
-                            if (userId == null) return@PrimaryButton
-
-                            if (
-                                nama.isBlank() ||
-                                tanggal.isBlank() ||
-                                lokasi.isBlank() ||
-                                penanggungjawab.isBlank()
-                            ) return@PrimaryButton
-
-                            isLoading = true
-
-                            fun text(v: String) =
-                                v.toRequestBody("text/plain".toMediaTypeOrNull())
-
-                            val file = imageUri?.let { uriToFile(context, it) }
-
-                            val fotoPart = file?.let {
-                                MultipartBody.Part.createFormData(
-                                    "foto_kegiatan",
-                                    it.name,
-                                    it.asRequestBody("image/*".toMediaTypeOrNull())
-                                )
-                            }
-
-                            ApiClient.instance.updateKegiatanMultipart(
-                                id = idKegiatan.toString(),
-                                idUser = text(userId.toString()),   // ✅ SESSION DIPAKAI
-                                namaKegiatan = text(nama),
-                                tanggalKegiatan = text(tanggal),
-                                lokasi = lokasi.takeIf { it.isNotBlank() }?.let { text(it) },
-                                penanggungjawab = penanggungjawab.takeIf { it.isNotBlank() }?.let { text(it) },
-                                deskripsi = deskripsi.takeIf { it.isNotBlank() }?.let { text(it) },
-                                statusKegiatan = text(status),
-                                foto_kegiatan = fotoPart
-                            ).enqueue(object : Callback<KegiatanDto> {
-                                override fun onResponse(
-                                    call: Call<KegiatanDto>,
-                                    response: Response<KegiatanDto>
-                                ) {
-                                    isLoading = false
-                                    if (response.isSuccessful) {
-                                        navController.popBackStack()
-                                    }
-                                }
-
-                                override fun onFailure(call: Call<KegiatanDto>, t: Throwable) {
-                                    isLoading = false
-                                }
-                            })
+                PrimaryButton(
+                    text = if (isLoading) "Menyimpan..." else "Update",
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        val file = imageUri?.let {
+                            try { uriToFile(context, it) } catch (e: Exception) { null }
                         }
-                    )
-                }
+
+                        isLoading = true
+
+                        viewModel.updateKegiatanMultipart(
+                            id = idKegiatan,
+                            idUser = sessionManager.idUser.toString(),
+                            nama = nama,
+                            tanggal = tanggal,
+                            lokasi = lokasi,
+                            penanggungjawab = penanggungjawab,
+                            deskripsi = deskripsi,
+                            status = status,
+                            fotoFile = file,
+                            context = context
+                        ) { success, _ ->
+                            isLoading = false
+                            if (success) navController.popBackStack()
+                        }
+                    }
+                )
             }
 
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Color.White)
-                }
-            }
+            Spacer(Modifier.height(32.dp))
         }
     }
 
-    // ================= DIALOG FOTO =================
-    if (showDialog) {
+    // DIALOG FOTO
+    if (showImageDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { showImageDialog = false },
             title = { Text("Pilih Sumber Foto") },
             confirmButton = {
                 TextButton(onClick = {
-                    showDialog = false
-                    val t = getTempUri(context)
-                    tempUri = t
-                    cameraLauncher.launch(t)
+                    showImageDialog = false
+                    val tmp = getTempUri(context)
+                    tempUri = tmp
+                    cameraLauncher.launch(tmp)
                 }) { Text("Kamera") }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    showDialog = false
+                    showImageDialog = false
                     galleryLauncher.launch("image/*")
                 }) { Text("Galeri") }
             }
         )
-    }
-}
-
-// ================= BOTTOM BAR =================
-@Composable
-private fun KegiatanBottomAppBar(
-    onNavigate: (String) -> Unit,
-    currentRoute: String
-) {
-    Surface(color = Color(0xFFF8F8F8), shadowElevation = 8.dp) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceAround
-        ) {
-            BottomNavItem("Home", Icons.Default.Home, false) { onNavigate("home") }
-            BottomNavItem("Inventaris", Icons.Outlined.Inventory, false) { onNavigate("inventaris_graph") }
-            BottomNavItem("Kegiatan", Icons.Default.List, true) {}
-            BottomNavItem("Keuangan", Icons.Outlined.Paid, false) { onNavigate("keuangan_graph") }
-        }
-    }
-}
-
-@Composable
-private fun RowScope.BottomNavItem(
-    label: String,
-    icon: ImageVector,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val color = if (selected) Color(0xFF1E5B8A) else Color.Gray
-    Column(
-        modifier = Modifier
-            .weight(1f)
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(icon, null, tint = color)
-        Text(label, fontSize = 11.sp, color = color)
     }
 }
