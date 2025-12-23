@@ -5,8 +5,8 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
-import androidx.navigation.navigation
 import androidx.navigation.navArgument
+import androidx.navigation.navigation
 import com.example.tbimaan.coreui.screen.Kegiatan.CreateKegiatanScreen
 import com.example.tbimaan.coreui.screen.Kegiatan.ReadKegiatanScreen
 import com.example.tbimaan.coreui.screen.Kegiatan.UpdateKegiatanScreen
@@ -27,9 +27,7 @@ fun NavGraphBuilder.kegiatanNavGraph(
             }
         }
 
-        // =====================
-        // READ KEGIATAN
-        // =====================
+
         composable("read_kegiatan") {
             val kegiatanViewModel: KegiatanViewModel = viewModel()
 
@@ -42,9 +40,6 @@ fun NavGraphBuilder.kegiatanNavGraph(
             )
         }
 
-        // =====================
-        // CREATE KEGIATAN
-        // =====================
         composable("create_kegiatan") {
             val kegiatanViewModel: KegiatanViewModel = viewModel()
 
@@ -54,9 +49,7 @@ fun NavGraphBuilder.kegiatanNavGraph(
             )
         }
 
-        // =====================
-        // UPDATE KEGIATAN
-        // =====================
+
         composable(
             route = "update_kegiatan/{id}/{nama}/{tanggal}/{lokasi}/{penanggungjawab}/{deskripsi}/{status}/{foto}",
             arguments = listOf(

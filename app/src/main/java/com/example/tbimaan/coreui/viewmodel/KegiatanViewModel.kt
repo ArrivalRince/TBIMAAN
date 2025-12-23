@@ -6,7 +6,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.tbimaan.coreui.Notification.KegiatanNotification
 import com.example.tbimaan.coreui.repository.KegiatanRepository
 import com.example.tbimaan.model.KegiatanResponse
 import kotlinx.coroutines.launch
@@ -18,18 +17,14 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.text.ParseException
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-// =========================
-// UI MODEL
-// =========================
 data class KegiatanEntry(
     val id: String,
     val nama: String,
-    val tanggal: String, // dd MMMM yyyy
+    val tanggal: String,
     val lokasi: String?,
     val penanggungjawab: String?,
     val deskripsi: String?,
@@ -55,16 +50,8 @@ class KegiatanViewModel : ViewModel() {
     private val _errorMessage = mutableStateOf("")
     val errorMessage: State<String> = _errorMessage
 
-    // =========================
-    // LOAD KEGIATAN + NOTIFIKASI
-    // =========================
-    // =========================
-// LOAD KEGIATAN + NOTIFIKASI (BY USER)
-// =========================
-    fun loadKegiatan(
-        context: Context,
-        idUser: Int
-    ) {
+
+    fun loadKegiatan(context: Context, idUser: Int) {
         if (_isLoading.value) return
 
         viewModelScope.launch {
@@ -82,8 +69,6 @@ class KegiatanViewModel : ViewModel() {
                         TAG,
                         "loadKegiatan: loaded ${_kegiatanList.value.size} items for user $idUser"
                     )
-
-                    checkUpcomingEventsAndNotify(context)
                 } else {
                     _errorMessage.value = "Gagal mengambil data kegiatan."
                     Log.e(TAG, "loadKegiatan: response null")
@@ -92,45 +77,7 @@ class KegiatanViewModel : ViewModel() {
         }
     }
 
-    // =========================
-    // NOTIFIKASI H-1
-    // =========================
-    private fun checkUpcomingEventsAndNotify(context: Context) {
-        val tomorrow = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, 1)
-        }.time
 
-        val tomorrowStart = getStartOfDay(tomorrow)
-
-        val upcomingEvents = _kegiatanList.value.filter {
-            it.originalDate != null &&
-                    getStartOfDay(it.originalDate) == tomorrowStart &&
-                    it.status.equals("Akan Datang", ignoreCase = true)
-        }
-
-        if (upcomingEvents.isNotEmpty()) {
-            KegiatanNotification.showEventReminderNotification(
-                context,
-                upcomingEvents
-            )
-        } else {
-            KegiatanNotification.cancelEventReminderNotification(context)
-        }
-    }
-
-    private fun getStartOfDay(date: Date): Date {
-        return Calendar.getInstance().apply {
-            time = date
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.time
-    }
-
-    // =========================
-    // CREATE KEGIATAN
-    // =========================
     fun createKegiatanMultipart(
         idUser: String,
         nama: String,
@@ -146,8 +93,7 @@ class KegiatanViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 fun textPart(v: String?): RequestBody? =
-                    v?.takeIf { it.isNotBlank() }
-                        ?.toRequestBody("text/plain".toMediaTypeOrNull())
+                    v?.takeIf { it.isNotBlank() }?.toRequestBody("text/plain".toMediaTypeOrNull())
 
                 val fotoPart = fotoFile?.let {
                     MultipartBody.Part.createFormData(
@@ -166,7 +112,7 @@ class KegiatanViewModel : ViewModel() {
                     deskripsi = textPart(deskripsi),
                     statusKegiatan = textPart(status)!!,
                     foto = fotoPart
-                ) { success: Boolean, message: String ->
+                ) { success, message ->
                     if (success) loadKegiatan(context, idUser.toInt())
                     onResult(success, message)
                 }
@@ -178,9 +124,7 @@ class KegiatanViewModel : ViewModel() {
         }
     }
 
-    // =========================
-    // UPDATE KEGIATAN (MULTIPART)
-    // =========================
+
     fun updateKegiatanMultipart(
         id: String,
         idUser: String,
@@ -197,8 +141,7 @@ class KegiatanViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 fun textPart(v: String?): RequestBody? =
-                    v?.takeIf { it.isNotBlank() }
-                        ?.toRequestBody("text/plain".toMediaTypeOrNull())
+                    v?.takeIf { it.isNotBlank() }?.toRequestBody("text/plain".toMediaTypeOrNull())
 
                 val fotoPart = fotoFile?.let {
                     MultipartBody.Part.createFormData(
@@ -230,9 +173,8 @@ class KegiatanViewModel : ViewModel() {
         }
     }
 
-    // =========================
-    // DELETE KEGIATAN
-    // =========================
+
+    // Di ViewModel
     fun deleteKegiatan(
         id: String,
         context: Context,
@@ -243,17 +185,19 @@ class KegiatanViewModel : ViewModel() {
             _isLoading.value = true
 
             repository.deleteKegiatan(id) { success, message ->
-                if (success) loadKegiatan(context, idUser)
-                else _errorMessage.value = message
+                if (success) {
+                    // Hapus item dari list lokal agar langsung hilang di UI
+                    _kegiatanList.value = _kegiatanList.value.filter { it.id != id }
+                } else {
+                    _errorMessage.value = message
+                }
                 _isLoading.value = false
                 onResult(success, message)
             }
         }
     }
 
-    // =========================
-    // GET DETAIL
-    // =========================
+
     fun getKegiatanById(id: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -274,9 +218,6 @@ class KegiatanViewModel : ViewModel() {
         _selectedItem.value = null
     }
 
-    // =========================
-    // MAPPER Response → UI
-    // =========================
     private fun KegiatanResponse.toKegiatanEntry(): KegiatanEntry? {
         if (idKegiatan == null) return null
 

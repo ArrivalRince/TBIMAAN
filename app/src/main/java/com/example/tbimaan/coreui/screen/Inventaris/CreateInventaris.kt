@@ -275,7 +275,7 @@ fun CreateInventarisScreen(
                 }
             }
 
-            // ===== LOADING =====
+
             if (isLoading) {
                 Box(
                     modifier = Modifier
@@ -289,7 +289,7 @@ fun CreateInventarisScreen(
         }
     }
 
-    // ===== IMAGE SOURCE DIALOG =====
+
     if (showImageSourceDialog) {
         AlertDialog(
             onDismissRequest = { showImageSourceDialog = false },

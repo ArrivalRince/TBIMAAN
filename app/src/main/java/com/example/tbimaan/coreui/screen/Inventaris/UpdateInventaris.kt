@@ -86,12 +86,12 @@ fun UpdateInventarisScreen(
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var tempUriHolder by remember { mutableStateOf<Uri?>(null) }
 
-    // Ambil data dari server saat screen dibuka
+
     LaunchedEffect(key1 = id) {
         viewModel.getInventarisById(id)
     }
 
-    // Isi form ketika data berhasil dimuat
+
     LaunchedEffect(key1 = item) {
         item?.let { loadedItem ->
             namaBarang = loadedItem.namaBarang
@@ -99,11 +99,11 @@ fun UpdateInventarisScreen(
             kondisi = loadedItem.kondisi
             existingImageUrl = loadedItem.urlFoto
 
-            // Konversi tanggal asli (Date object) ke format "yyyy-MM-dd" untuk DatePicker
+
             tanggal = if (loadedItem.originalDate != null) {
                 SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(loadedItem.originalDate)
             } else {
-                // Fallback jika originalDate null, meskipun seharusnya tidak terjadi dengan VM baru
+
                 ""
             }
         }
@@ -183,7 +183,7 @@ fun UpdateInventarisScreen(
                             trailingIcon = { Icon(Icons.Default.DateRange, "Pilih Tanggal", Modifier.clickable { datePickerDialog.show() }) }
                         )
 
-                        // Upload / Ubah Foto
+
                         Box(
                             Modifier
                                 .fillMaxWidth()
@@ -212,7 +212,7 @@ fun UpdateInventarisScreen(
 
                     Spacer(Modifier.weight(1f))
 
-                    // Tombol Update
+
                     Row(Modifier.fillMaxWidth().padding(24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         PrimaryButton(
                             text = "Update",
@@ -241,7 +241,7 @@ fun UpdateInventarisScreen(
                     }
                 }
 
-                // Loading overlay
+
                 if (isProcessing) {
                     Box(
                         Modifier
@@ -255,7 +255,7 @@ fun UpdateInventarisScreen(
                 }
             }
 
-            // Dialog pilih sumber foto
+
             if (showImageSourceDialog) {
                 AlertDialog(
                     onDismissRequest = { showImageSourceDialog = false },

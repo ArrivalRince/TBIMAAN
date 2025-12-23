@@ -69,7 +69,7 @@ fun CreateKegiatanScreen(
     navController: NavController,
     viewModel: KegiatanViewModel
 ) {
-    // ================= FORM STATE =================
+
     var nama by remember { mutableStateOf("") }
     var tanggal by remember { mutableStateOf("") }
     var lokasi by remember { mutableStateOf("") }
@@ -77,7 +77,7 @@ fun CreateKegiatanScreen(
     var deskripsi by remember { mutableStateOf("") }
     val status = "Akan Datang"
 
-    // ================= UI STATE =================
+
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
 
@@ -86,7 +86,7 @@ fun CreateKegiatanScreen(
     var showImageDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // ================= IMAGE PICKER =================
+
     val galleryLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             if (uri != null) imageUri = uri
@@ -97,7 +97,7 @@ fun CreateKegiatanScreen(
             if (success) imageUri = tempUri
         }
 
-    // ================= DATE PICKER =================
+
     val calendar = Calendar.getInstance()
 
     val datePickerDialog = remember {
@@ -114,7 +114,7 @@ fun CreateKegiatanScreen(
         }
     }
 
-    // ================= UI =================
+
     Scaffold(containerColor = Color.White) { padding ->
         Box(Modifier.fillMaxSize()) {
 
@@ -155,7 +155,7 @@ fun CreateKegiatanScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                // ===== FORM =====
+
                 Card(
                     modifier = Modifier.padding(horizontal = 20.dp),
                     shape = RoundedCornerShape(16.dp),
@@ -219,7 +219,7 @@ fun CreateKegiatanScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        // ===== FOTO =====
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -255,7 +255,7 @@ fun CreateKegiatanScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                // ===== BUTTON =====
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

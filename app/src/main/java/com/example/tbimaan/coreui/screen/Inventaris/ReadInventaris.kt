@@ -105,12 +105,10 @@ fun ReadInventarisScreen(
     var itemToDelete by remember { mutableStateOf<InventarisEntry?>(null) }
     var itemToShowProof by remember { mutableStateOf<InventarisEntry?>(null) }
 
-    // ✅ tambahan: state pencarian
+
     var searchQuery by remember { mutableStateOf("") }
 
-    // =======================================================================
-    // ===       LOGIKA PERMINTAAN IZIN NOTIFIKASI (YANG HILANG)           ===
-    // =======================================================================
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -134,10 +132,10 @@ fun ReadInventarisScreen(
         }
     }
 
-    // =======================================================================
 
 
-    // ✅ tetap mengikuti VM/Repo yang ada
+
+
     LaunchedEffect(sessionManager.idUser) {
         sessionManager.idUser?.let {
             viewModel.loadInventaris(it, context) // Kirim context
@@ -150,7 +148,7 @@ fun ReadInventarisScreen(
         }
     }
 
-    // ✅ hasil filter (UI saja)
+
     val filteredList = remember(inventarisList, searchQuery) {
         if (searchQuery.isBlank()) inventarisList
         else inventarisList.filter {
@@ -187,7 +185,7 @@ fun ReadInventarisScreen(
                 item { HeaderContent(navController) }
                 item { SectionTitle("Data Inventaris Masjid") }
 
-                // ✅ tambahan: Search bar di bawah judul
+
                 item {
                     SearchBarInventaris(
                         value = searchQuery,
@@ -226,7 +224,7 @@ fun ReadInventarisScreen(
         DeleteConfirmationDialog(
             itemName = item.namaBarang,
             onConfirm = {
-                // ✅ tetap mengikuti VM/Repo yang ada
+
                 viewModel.deleteInventaris(item.id, sessionManager.idUser, context) // Kirim context
                 itemToDelete = null
             },
@@ -241,8 +239,6 @@ fun ReadInventarisScreen(
         )
     }
 }
-
-// ================= UI Helper =================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -26,11 +26,15 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material.icons.outlined.Paid
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -61,7 +65,6 @@ import com.example.tbimaan.coreui.navigation.HOME_GRAPH_ROUTE
 import com.example.tbimaan.coreui.navigation.INVENTARIS_GRAPH_ROUTE
 import com.example.tbimaan.coreui.navigation.KEGIATAN_GRAPH_ROUTE
 import com.example.tbimaan.coreui.navigation.KEUANGAN_GRAPH_ROUTE
-import com.example.tbimaan.coreui.screen.Inventaris.BottomNavBarItem
 import com.example.tbimaan.coreui.viewmodel.KegiatanEntry
 import com.example.tbimaan.coreui.viewmodel.KegiatanViewModel
 import com.example.tbimaan.model.SessionManager
@@ -80,14 +83,15 @@ fun ReadKegiatanScreen(
     val isLoading by viewModel.isLoading
     val errorMessage by viewModel.errorMessage
 
-    // 🔑 LOAD DATA BERDASARKAN USER LOGIN
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var selectedKegiatan by remember { mutableStateOf<KegiatanEntry?>(null) }
+
     LaunchedEffect(idUser) {
         idUser?.let {
             viewModel.loadKegiatan(context, it)
         }
     }
 
-    // SEARCH
     var query by remember { mutableStateOf("") }
     val filteredList = kegiatanList.filter {
         it.nama.contains(query, ignoreCase = true)
@@ -110,8 +114,11 @@ fun ReadKegiatanScreen(
                 .background(Color(0xFFF9F9F9))
         ) {
 
-            // HEADER
-            Box(Modifier.fillMaxWidth().height(180.dp)) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
                 Image(
                     painter = painterResource(R.drawable.masjid),
                     contentDescription = null,
@@ -126,7 +133,9 @@ fun ReadKegiatanScreen(
 
             Text(
                 "DAFTAR KEGIATAN",
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
@@ -136,7 +145,9 @@ fun ReadKegiatanScreen(
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 placeholder = { Text("Cari kegiatan...") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 shape = RoundedCornerShape(24.dp),
@@ -156,7 +167,9 @@ fun ReadKegiatanScreen(
 
                 filteredList.isEmpty() -> Text(
                     "Tidak ada kegiatan",
-                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
                     textAlign = TextAlign.Center
                 )
 
@@ -178,19 +191,49 @@ fun ReadKegiatanScreen(
                                 navController.navigate(route)
                             },
                             onDelete = {
-                                idUser?.let {
-                                    viewModel.deleteKegiatan(
-                                        id = kegiatan.id,
-                                        context = context,
-                                        idUser = it
-                                    ) { _, _ -> }
-                                }
+                                selectedKegiatan = kegiatan
+                                showDeleteDialog = true
                             }
                         )
                     }
                 }
             }
         }
+    }
+
+    if (showDeleteDialog && selectedKegiatan != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteDialog = false
+                selectedKegiatan = null
+            },
+            title = { Text("Konfirmasi Hapus") },
+            text = { Text("Yakin ingin menghapus \"${selectedKegiatan!!.nama}\"?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        idUser?.let { uid ->
+                            viewModel.deleteKegiatan(
+                                id = selectedKegiatan!!.id,
+                                context = context,
+                                idUser = uid
+                            ) { _, _ -> }
+                        }
+                        showDeleteDialog = false
+                        selectedKegiatan = null
+                    },
+                    colors = ButtonDefaults.buttonColors(Color.Red)
+                ) { Text("Hapus") }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        selectedKegiatan = null
+                    }
+                ) { Text("Batal") }
+            }
+        )
     }
 }
 
@@ -276,7 +319,10 @@ fun KegiatanCard(
 }
 
 @Composable
-fun ConsistentBottomNavBar(navController: NavController, currentRoute: String?) {
+fun ConsistentBottomNavBar(
+    navController: NavController,
+    currentRoute: String?
+) {
     Surface(modifier = Modifier.fillMaxWidth(), shadowElevation = 8.dp, color = Color.White) {
         Row(
             modifier = Modifier

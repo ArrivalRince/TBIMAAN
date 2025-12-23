@@ -11,7 +11,7 @@ import retrofit2.Response
 
 class KeuanganRepository {
 
-    // ====== READ ALL ======
+
     fun getKeuangan(idUser: Int, onResult: (List<KeuanganResponse>?) -> Unit) {
         ApiClient.instance.getKeuangan(idUser).enqueue(object : Callback<List<KeuanganResponse>> {
             override fun onResponse(call: Call<List<KeuanganResponse>>, response: Response<List<KeuanganResponse>>) {
@@ -31,7 +31,7 @@ class KeuanganRepository {
         })
     }
 
-    // ====== READ BY ID (PERBAIKAN KRUSIAL) ======
+
     fun getKeuanganById(id: String, onResult: (KeuanganResponse?) -> Unit) {
         Log.d("KeuanganRepository", "Requesting getKeuanganById with id: $id")
         ApiClient.instance.getKeuanganById(id).enqueue(object : Callback<KeuanganResponse> {
@@ -52,7 +52,7 @@ class KeuanganRepository {
         })
     }
 
-    // ====== CREATE ======
+
     fun createKeuangan(
         idUser: RequestBody,
         keterangan: RequestBody,
@@ -81,7 +81,7 @@ class KeuanganRepository {
             })
     }
 
-    // ====== UPDATE (PERBAIKAN UTAMA - PARAMETER HARUS COCOK) ======
+
     fun updateKeuangan(
         id: String,
         keterangan: RequestBody,
@@ -111,7 +111,7 @@ class KeuanganRepository {
             })
     }
 
-    // ====== DELETE ======
+
     fun deleteKeuangan(id: String, onResult: (isSuccess: Boolean, message: String) -> Unit) {
         Log.d("KeuanganRepository", "Deleting keuangan with id: $id")
         ApiClient.instance.deleteKeuangan(id).enqueue(object : Callback<Void> {

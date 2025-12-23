@@ -106,7 +106,7 @@ fun ReadKeuanganScreen(
     var itemToDelete by remember { mutableStateOf<PemasukanEntry?>(null) }
     var itemToShowProof by remember { mutableStateOf<PemasukanEntry?>(null) }
 
-    // --- Permintaan Izin Notifikasi ---
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -168,7 +168,7 @@ fun ReadKeuanganScreen(
                 ) {
                     item { HeaderContent(navController) }
 
-                    // --- Pemasukan ---
+
                     item {
                         SectionTitle("Data Pemasukan", Color(0xFF1E5B8A))
                         KeuanganTable(
@@ -187,7 +187,7 @@ fun ReadKeuanganScreen(
                         TotalRow(label = "Total Pemasukan", total = totalPemasukan, color = Color(0xFF1E5B8A), borderColor = Color(0xFFB0D4E2))
                     }
 
-                    // --- Pengeluaran ---
+
                     item {
                         SectionTitle("Data Pengeluaran", Color(0xFFD9534F))
                         KeuanganTable(
@@ -211,7 +211,7 @@ fun ReadKeuanganScreen(
             }
         }
 
-        // --- Dialogs ---
+
         if (showDeleteDialog) {
             DeleteConfirmationDialog(
                 itemName = itemToDelete?.keterangan ?: "",

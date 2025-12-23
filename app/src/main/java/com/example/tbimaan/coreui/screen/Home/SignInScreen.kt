@@ -56,6 +56,7 @@ import com.example.tbimaan.R
 import com.example.tbimaan.model.SessionManager
 import com.example.tbimaan.network.ApiClient
 import com.example.tbimaan.network.FcmTokenRequest
+import com.example.tbimaan.network.FcmTokenResponse
 import com.example.tbimaan.network.LoginRequest
 import com.example.tbimaan.network.LoginResponse
 import com.google.firebase.messaging.FirebaseMessaging
@@ -84,6 +85,34 @@ fun SignInScreen(
         Toast.makeText(context, "Selamat datang $namaMasjid", Toast.LENGTH_SHORT).show()
         isLoading = false
         onSignInClick()
+    }
+
+    fun saveFcmTokenToBackend(userId: Int, token: String) {
+        val req = FcmTokenRequest(
+            id_user = userId,
+            fcm_token = token
+        )
+
+        ApiClient.instance.updateFcmToken(req)
+            .enqueue(object : Callback<FcmTokenResponse> {
+                override fun onResponse(
+                    call: Call<FcmTokenResponse>,
+                    response: Response<FcmTokenResponse>
+                ) {
+                    if (response.isSuccessful) {
+                        Log.d("FCM", "✅ FCM Token berhasil disimpan ke backend")
+                    } else {
+                        Log.e("FCM", "❌ Gagal simpan token: ${response.code()}")
+                    }
+                }
+
+                override fun onFailure(
+                    call: Call<FcmTokenResponse>,
+                    t: Throwable
+                ) {
+                    Log.e("FCM", "❌ Error simpan token: ${t.message}")
+                }
+            })
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -239,48 +268,27 @@ fun SignInScreen(
                                         sessionManager.createLoginSession(
                                             idUser = user.id_user,
                                             namaMasjid = user.nama_masjid,
-                                            email = user.email,
-                                            alamat = user.alamat
+                                            email = user.email
                                         )
 
                                         // Ambil token & simpan ke backend (tidak menghalangi masuk)
                                         FirebaseMessaging.getInstance().token
                                             .addOnSuccessListener { token ->
-                                                Log.d("FCM", "FCM Token: $token")
-
-                                                val req = FcmTokenRequest(
-                                                    userId = user.id_user,
-                                                    fcmToken = token
-                                                )
-
-                                                ApiClient.instance.saveInventoryToken(req)
-                                                    .enqueue(object :
-                                                        Callback<Map<String, String>> {
-
-                                                        override fun onResponse(
-                                                            call: Call<Map<String, String>>,
-                                                            response: Response<Map<String, String>>
-                                                        ) {
-                                                            Log.d(
-                                                                "FCM",
-                                                                "save token code=${response.code()} body=${response.body()}"
-                                                            )
-                                                        }
-
-                                                        override fun onFailure(
-                                                            call: Call<Map<String, String>>,
-                                                            t: Throwable
-                                                        ) {
-                                                            Log.e(
-                                                                "FCM",
-                                                                "save token error=${t.message}"
-                                                            )
-                                                        }
-                                                    })
+                                                Log.d("FCM", "✅ FCM Token: $token")
+                                                saveFcmTokenToBackend(user.id_user, token)
                                             }
                                             .addOnFailureListener { e ->
-                                                Log.e("FCM", "get token error=${e.message}")
+                                                Log.e("FCM", "❌ Gagal get FCM token: ${e.message}")
+                                                // Fallback untuk development (esp. emulator tanpa Play Services)
+                                                if (e.message?.contains("MISSING_INSTANCEID_SERVICE") == true) {
+                                                    Log.w("FCM", "⚠️  Google Play Services tidak tersedia. Menggunakan mock token untuk development.")
+                                                    val mockToken = "dev_mock_token_${user.id_user}_${System.currentTimeMillis()}"
+                                                    saveFcmTokenToBackend(user.id_user, mockToken)
+                                                }
                                             }
+
+                                        // Masuk ke aplikasi setelah login sukses
+                                        goToApp(user.nama_masjid)
                                     }
 
                                     override fun onFailure(call: Call<LoginResponse>, t: Throwable) {

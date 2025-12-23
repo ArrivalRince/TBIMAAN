@@ -11,7 +11,7 @@ import retrofit2.Response
 
 class InventarisRepository {
 
-    // ====== READ ALL ======
+    // read
     fun getInventaris(idUser: Int, onResult: (List<InventarisResponse>?) -> Unit) {
         Log.d("InventarisRepository", "Requesting getInventaris for user $idUser")
         ApiClient.instance.getInventaris(idUser)
@@ -45,7 +45,7 @@ class InventarisRepository {
             })
     }
 
-    // ====== READ BY ID ======
+    //read id
     fun getInventarisById(id: String, onResult: (InventarisResponse?) -> Unit) {
         Log.d("InventarisRepository", "Requesting getInventarisById with id: $id")
         ApiClient.instance.getInventarisById(id)
@@ -79,7 +79,7 @@ class InventarisRepository {
             })
     }
 
-    // ====== CREATE ======
+    // create
     fun createInventaris(
         idUser: RequestBody,
         namaBarang: RequestBody,
@@ -127,7 +127,7 @@ class InventarisRepository {
         })
     }
 
-    // ====== UPDATE ======
+    // update
     fun updateInventaris(
         id: String,
         namaBarang: RequestBody,

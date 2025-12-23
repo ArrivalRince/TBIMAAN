@@ -20,7 +20,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 class MainActivity : ComponentActivity() {
 
     companion object {
-        // Gunakan ID ini juga saat NotificationCompat.Builder(context, CHANNEL_ID)
+
         const val CHANNEL_ID = "inventory_reminder"
         const val CHANNEL_NAME = "Reminder Inventaris"
         const val CHANNEL_DESC = "Notifikasi pengingat pemeriksaan inventaris"
@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
 
     private val requestNotifPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            // Kalau denied di Android 13+, notif tidak akan tampil.
+
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Optional: tetap kalau kamu pakai FCM
+
         createToken()
     }
 

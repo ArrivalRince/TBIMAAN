@@ -1,11 +1,5 @@
 package com.example.tbimaan.coreui.screen.Home
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,9 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,40 +38,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.tbimaan.R
 import com.example.tbimaan.coreui.screen.Inventaris.ConsistentBottomNavBar
 import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
+import com.example.tbimaan.coreui.viewmodel.KegiatanViewModel
 import com.example.tbimaan.coreui.viewmodel.KeuanganViewModel
-import com.example.tbimaan.model.KegiatanResponse
 import com.example.tbimaan.model.SessionManager
-import com.example.tbimaan.network.ApiClient
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import java.text.NumberFormat
 import java.util.Locale
-
-@Composable
-fun RequestNotificationPermissionOnce() {
-    val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { /* no-op */ }
-
-    LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val granted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (!granted) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-}
 
 @Composable
 fun HomeScreen(
@@ -89,51 +57,34 @@ fun HomeScreen(
     onKeuanganClick: () -> Unit,
     onKegiatanClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    masjidNama: String = "Masjid (username)",
-    alamat: String = "Alamat belum diatur"
 ) {
-    // Izin notif hanya untuk Android 13+ (tidak mengubah tampilan)
-    RequestNotificationPermissionOnce()
-
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
 
+    val namaMasjidSession =
+        sessionManager.namaMasjid
+            ?.takeIf { it.isNotBlank() }
+            ?.let { "Masjid $it" }
+            ?: "Masjid"
+
     val inventarisVM: InventarisViewModel = viewModel()
     val keuanganVM: KeuanganViewModel = viewModel()
+    val kegiatanVM: KegiatanViewModel = viewModel()
 
     val inventarisList by inventarisVM.inventarisList
     val pemasukanList by keuanganVM.pemasukanList
     val pengeluaranList by keuanganVM.pengeluaranList
+    val kegiatanList by kegiatanVM.kegiatanList
 
-    var kegiatanCount by remember { mutableStateOf(0) }
-
-    // Load data saat idUser siap
     LaunchedEffect(sessionManager.idUser) {
-        val idUser = sessionManager.idUser ?: return@LaunchedEffect
-
-        inventarisVM.loadInventaris(idUser, context)
-        keuanganVM.loadData(idUser, context)
-
-        // Kegiatan pakai KegiatanResponse (bukan DTO)
-        ApiClient.instance.getKegiatan(idUser)
-            .enqueue(object : Callback<List<KegiatanResponse>> {
-                override fun onResponse(
-                    call: Call<List<KegiatanResponse>>,
-                    response: Response<List<KegiatanResponse>>
-                ) {
-                    if (response.isSuccessful) {
-                        kegiatanCount = response.body().orEmpty().size
-                    } else {
-                        Log.e("HomeScreen", "getKegiatan gagal: ${response.code()} body=${response.errorBody()?.string()}")
-                    }
-                }
-
-                override fun onFailure(call: Call<List<KegiatanResponse>>, t: Throwable) {
-                    Log.e("HomeScreen", "getKegiatan error: ${t.message}", t)
-                }
-            })
+        sessionManager.idUser?.let { idUser ->
+            inventarisVM.loadInventaris(idUser, context)
+            keuanganVM.loadData(idUser, context)
+            kegiatanVM.loadKegiatan(context, idUser)
+        }
     }
 
+    val kegiatanCount = kegiatanList.size
     val totalInventarisJenis = inventarisList.size
     val totalPemasukan = pemasukanList.sumOf { it.jumlah }
     val totalPengeluaran = pengeluaranList.sumOf { it.jumlah }
@@ -155,6 +106,7 @@ fun HomeScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
 
+                // ===== HEADER IMAGE =====
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -186,10 +138,11 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height((-36).dp))
 
+
                 MasjidInfoCard(
-                    nama = masjidNama,
-                    alamat = alamat
+                    nama = namaMasjidSession,
                 )
+
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -207,10 +160,9 @@ fun HomeScreen(
     }
 }
 
-/* ===================== SUPPORTING COMPOSABLE ===================== */
 
 @Composable
-private fun MasjidInfoCard(nama: String, alamat: String) {
+private fun MasjidInfoCard(nama: String) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -225,7 +177,6 @@ private fun MasjidInfoCard(nama: String, alamat: String) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(nama, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0D3B66))
-                Text(alamat, fontSize = 12.sp, color = Color(0xFF6B7280))
             }
 
             Surface(
@@ -287,7 +238,9 @@ private fun DashboardCard(
             .height(height)
             .clickable { onClick() },
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F0FF)),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFE3F0FF) // biru lebih hidup
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
     ) {
         Column(
@@ -323,6 +276,7 @@ private fun DashboardCard(
         }
     }
 }
+
 
 private fun formatRupiah(amount: Double): String =
     NumberFormat.getCurrencyInstance(Locale("in", "ID")).apply {

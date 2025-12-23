@@ -23,18 +23,18 @@ import com.example.tbimaan.coreui.viewmodel.InventarisViewModel
 import com.example.tbimaan.coreui.viewmodel.KeuanganViewModel
 import com.example.tbimaan.model.SessionManager
 
-// ================= ROUTES =================
+// routes
 const val HOME_GRAPH_ROUTE = "home"
 const val INVENTARIS_GRAPH_ROUTE = "inventaris_graph"
 const val KEUANGAN_GRAPH_ROUTE = "keuangan_graph"
 const val KEGIATAN_GRAPH_ROUTE = "kegiatan_graph"
 
-// ================= NAVIGATION ROOT =================
+// navigation
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    // 👉 Untuk highlight navbar
+    // Untuk highlight navbar
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -58,7 +58,7 @@ fun AppNavigation() {
         startDestination = startDestination
     ) {
 
-        // ================= LANDING & AUTH =================
+        // landing dan auth
         composable("landing") {
             LandingPageScreen(
                 onGetStartedClick = { navController.navigate("landing2") },
@@ -94,7 +94,7 @@ fun AppNavigation() {
             )
         }
 
-        // ================= HOME =================
+        // home
         composable(HOME_GRAPH_ROUTE) {
             HomeScreen(
                 navController = navController,
@@ -114,14 +114,14 @@ fun AppNavigation() {
             )
         }
 
-        // ================= SETTINGS =================
+        // settings
         composable("settings") { SettingScreen(navController = navController) }
         composable("profile") { ProfileScreen(navController = navController) }
         composable("edit_profile") { EditProfileScreen(navController = navController) }
         composable("info_aplikasi") { InfoAplikasiScreen(navController = navController) }
         composable("keamanan_akun") { KeamananAkunScreen(navController = navController) }
 
-        // ================= MODULE NAV GRAPH =================
+        // navgraph
         inventarisNavGraph(
             navController = navController,
             viewModel = inventarisViewModel

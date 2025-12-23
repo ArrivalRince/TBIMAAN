@@ -1,12 +1,10 @@
 package com.example.tbimaan.coreui.viewmodel
 
 import android.content.Context
-import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.tbimaan.coreui.Notification.InventarisNotification
 import com.example.tbimaan.coreui.repository.InventarisRepository
 import com.example.tbimaan.model.InventarisResponse
 import com.example.tbimaan.network.ApiClient
@@ -16,21 +14,20 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
-import java.text.ParseException // <-- GANTI IMPORT YANG SALAH DENGAN INI
+import java.text.ParseException
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-// Model UI tidak berubah
+
 data class InventarisEntry(
     val id: String,
     val namaBarang: String,
     val kondisi: String,
     val jumlah: String,
     val tanggal: String,
-    val originalDate: Date?, // <-- TAMBAHAN: Simpan tanggal asli untuk pengecekan
+    val originalDate: Date?,
     val urlFoto: String
 )
 
@@ -51,7 +48,7 @@ class InventarisViewModel : ViewModel() {
     private val _errorMessage = mutableStateOf("")
     val errorMessage: State<String> = _errorMessage
 
-    // PERUBAHAN: Menerima Context
+
     fun loadInventaris(currentUserId: Int?, context: Context) {
         if (currentUserId == null) {
             _errorMessage.value = "Sesi pengguna tidak valid."
@@ -69,8 +66,6 @@ class InventarisViewModel : ViewModel() {
                 try {
                     if (responseList != null) {
                         _inventarisList.value = responseList.mapNotNull { it.toInventarisEntry() }
-                        // PANGGIL FUNGSI PENGECEKAN DI SINI
-                        checkItemAgesAndNotify(context)
                     } else {
                         _errorMessage.value = "Gagal mengambil data inventaris"
                     }
@@ -83,28 +78,7 @@ class InventarisViewModel : ViewModel() {
         }
     }
 
-    // FUNGSI BARU UNTUK NOTIFIKASI
-    private fun checkItemAgesAndNotify(context: Context) {
-        val threeMonthsAgo = Calendar.getInstance().apply {
-            add(Calendar.MONTH, -3)
-        }.time
 
-        // Gunakan originalDate yang sudah pasti berformat Date
-        val oldItems = _inventarisList.value.filter { item ->
-            item.originalDate != null && item.originalDate.before(threeMonthsAgo)
-        }
-
-        if (oldItems.isNotEmpty()) {
-            Log.d(TAG, "${oldItems.size} barang ditemukan lebih dari 3 bulan. MENAMPILKAN NOTIFIKASI.")
-            InventarisNotification.showInventoryCheckNotification(context, oldItems)
-        } else {
-            Log.d(TAG, "Tidak ada barang lama. Membatalkan notifikasi jika ada.")
-            InventarisNotification.cancelInventoryCheckNotification(context)
-        }
-    }
-
-
-    // PERUBAHAN: Menerima Context
     fun createInventaris(
         currentUserId: Int?,
         namaBarang: String,
@@ -112,7 +86,7 @@ class InventarisViewModel : ViewModel() {
         jumlah: String,
         tanggal: String,
         fotoFile: File,
-        context: Context, // <-- Parameter baru
+        context: Context,
         onResult: (Boolean, String) -> Unit
     ) {
         if (currentUserId == null) {
@@ -130,13 +104,13 @@ class InventarisViewModel : ViewModel() {
             val fotoPart = MultipartBody.Part.createFormData("foto_barang", fotoFile.name, requestFile)
 
             repository.createInventaris(idUserBody, namaBody, kondisiBody, jumlahBody, tanggalBody, fotoPart) { isSuccess, message ->
-                if (isSuccess) loadInventaris(currentUserId, context) // <-- Kirim context
+                if (isSuccess) loadInventaris(currentUserId, context)
                 onResult(isSuccess, message)
             }
         }
     }
 
-    // PERUBAHAN: Menerima Context
+
     fun updateInventaris(
         id: String,
         currentUserId: Int?,
@@ -145,7 +119,7 @@ class InventarisViewModel : ViewModel() {
         jumlah: String,
         tanggal: String,
         fotoFile: File?,
-        context: Context, // <-- Parameter baru
+        context: Context,
         onResult: (Boolean, String) -> Unit
     ) {
         if (currentUserId == null) {
@@ -170,8 +144,8 @@ class InventarisViewModel : ViewModel() {
         }
     }
 
-    // PERUBAHAN: Menerima Context
-    fun deleteInventaris(id: String, currentUserId: Int?, context: Context) { // <-- Parameter baru
+
+    fun deleteInventaris(id: String, currentUserId: Int?, context: Context) {
         if (currentUserId == null) {
             _errorMessage.value = "Sesi pengguna tidak valid"
             return
@@ -208,13 +182,11 @@ class InventarisViewModel : ViewModel() {
         _selectedItem.value = null
     }
 
-    // =======================================================================
-    // ===                 PERBAIKAN FUNGSI PARSING TANGGAL                ===
-    // =======================================================================
+
     private fun InventarisResponse.toInventarisEntry(): InventarisEntry? {
         val idInv = this.idInventaris ?: return null
 
-        // Daftar format tanggal yang mungkin diterima
+
         val dateFormats = listOf(
             SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") },
             SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -224,16 +196,16 @@ class InventarisViewModel : ViewModel() {
         for (format in dateFormats) {
             try {
                 parsedDate = format.parse(this.tanggal ?: "")
-                if (parsedDate != null) break // Jika berhasil, hentikan loop
+                if (parsedDate != null) break //
             } catch (e: ParseException) {
-                // Lanjutkan ke format berikutnya jika gagal
+
             }
         }
 
         val tanggalUntukTampilan = if (parsedDate != null) {
             SimpleDateFormat("dd MMMM yyyy", Locale("in", "ID")).format(parsedDate)
         } else {
-            this.tanggal ?: "-" // Fallback jika semua format gagal
+            this.tanggal ?: "-"
         }
 
         val urlFoto = if (this.fotoBarang.isNullOrBlank()) ""
@@ -245,9 +217,9 @@ class InventarisViewModel : ViewModel() {
             kondisi = this.kondisi ?: "-",
             jumlah = this.jumlah?.toString() ?: "0",
             tanggal = tanggalUntukTampilan,
-            originalDate = parsedDate, // Simpan tanggal asli yang sudah di-parse
+            originalDate = parsedDate,
             urlFoto = urlFoto
         )
     }
-    // =======================================================================
+
 }

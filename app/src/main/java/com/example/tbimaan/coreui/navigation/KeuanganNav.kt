@@ -18,7 +18,7 @@ fun NavGraphBuilder.keuanganNavGraph(navController: NavController) {
         route = KEUANGAN_GRAPH_ROUTE
     ) {
 
-        // 🔹 Rute untuk halaman utama modul keuangan (Read)
+
         composable("read_keuangan") {
 
             ReadKeuanganScreen(
@@ -27,7 +27,7 @@ fun NavGraphBuilder.keuanganNavGraph(navController: NavController) {
             )
         }
 
-        // 🔹 Rute untuk halaman tambah data (Create)
+
         composable("create_keuangan") {
 
             CreateKeuanganScreen(
@@ -35,7 +35,7 @@ fun NavGraphBuilder.keuanganNavGraph(navController: NavController) {
             )
         }
 
-        // 🔹 Rute untuk halaman perbarui data (Update)
+
         composable(
             route = "update_keuangan/{id}",
             arguments = listOf(navArgument("id") { type = NavType.StringType })

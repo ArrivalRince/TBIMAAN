@@ -6,7 +6,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.tbimaan.coreui.Notification.KeuanganNotification
 import com.example.tbimaan.coreui.repository.KeuanganRepository
 import com.example.tbimaan.model.KeuanganResponse
 import kotlinx.coroutines.launch
@@ -18,7 +17,6 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-
 data class PemasukanEntry(
     val id: String,
     val keterangan: String,
@@ -28,6 +26,7 @@ data class PemasukanEntry(
     val tipeTransaksi: String = "",
     val urlBukti: String = ""
 )
+
 class KeuanganViewModel : ViewModel() {
 
     private val repository = KeuanganRepository()
@@ -48,7 +47,7 @@ class KeuanganViewModel : ViewModel() {
     private val _selectedItem = mutableStateOf<PemasukanEntry?>(null)
     val selectedItem: State<PemasukanEntry?> = _selectedItem
 
-    // Di dalam class KeuanganViewModel
+
     fun loadData(currentUserId: Int?, context: Context) {
         if (currentUserId == null) {
             _errorMessage.value = "Sesi pengguna tidak valid."
@@ -63,16 +62,13 @@ class KeuanganViewModel : ViewModel() {
 
             Log.d(TAG, "loadData: Memulai ambil data untuk User ID: $currentUserId")
             repository.getKeuangan(currentUserId) { responseList ->
-                _isLoading.value = false // Matikan loading setelah data diterima
+                _isLoading.value = false
                 if (responseList != null) {
                     try {
                         val entries = responseList.mapNotNull { it.toPemasukanEntry() }
                         // Update state list
                         _pemasukanList.value = entries.filter { it.tipeTransaksi.equals("pemasukan", ignoreCase = true) }
                         _pengeluaranList.value = entries.filter { it.tipeTransaksi.equals("pengeluaran", ignoreCase = true) }
-
-                        checkBalanceAndNotify(context)
-
                     } catch (e: Exception) {
                         _errorMessage.value = "Error saat memproses data: ${e.message}"
                         Log.e(TAG, "Error parsing data: ", e)
@@ -82,21 +78,6 @@ class KeuanganViewModel : ViewModel() {
                     Log.e(TAG, "Gagal ambil data, responseList null")
                 }
             }
-        }
-    }
-
-    private fun checkBalanceAndNotify(context: Context) {
-        val totalPemasukan = _pemasukanList.value.sumOf { it.jumlah }
-        val totalPengeluaran = _pengeluaranList.value.sumOf { it.jumlah }
-
-        if (totalPengeluaran > totalPemasukan) {
-            Log.d(TAG, "checkBalanceAndNotify: Defisit terdeteksi. Menampilkan notifikasi.")
-
-            KeuanganNotification.showBudgetWarningNotification(context, totalPemasukan, totalPengeluaran)
-        } else {
-            Log.d(TAG, "checkBalanceAndNotify: Saldo aman. Menghapus notifikasi.")
-
-            KeuanganNotification.cancelBudgetWarningNotification(context)
         }
     }
 
@@ -127,7 +108,7 @@ class KeuanganViewModel : ViewModel() {
                 val buktiPart = MultipartBody.Part.createFormData("bukti_transaksi", buktiFile.name, requestFile)
 
                 repository.createKeuangan(idUserBody, keteranganBody, tipeTransaksiBody, tanggalBody, jumlahBody, buktiPart) { isSuccess, message ->
-                    if (isSuccess) loadData(currentUserId, context) // <-- Kirim context saat reload
+                    if (isSuccess) loadData(currentUserId, context)
                     onResult(isSuccess, message)
                 }
             } catch (e: Exception) {
@@ -168,7 +149,7 @@ class KeuanganViewModel : ViewModel() {
                 }
 
                 repository.updateKeuangan(id, keteranganBody, tipeTransaksiBody, tanggalBody, jumlahBody, buktiPart) { isSuccess, message ->
-                    if (isSuccess) loadData(currentUserId, context) // <-- Kirim context saat reload
+                    if (isSuccess) loadData(currentUserId, context)
                     onResult(isSuccess, message)
                 }
             } catch (e: Exception) {
@@ -189,10 +170,10 @@ class KeuanganViewModel : ViewModel() {
             _errorMessage.value = ""
             repository.deleteKeuangan(id) { isSuccess, message ->
                 if (isSuccess) {
-                    loadData(currentUserId, context) // <-- Kirim context saat reload
+                    loadData(currentUserId, context)
                 } else {
                     _errorMessage.value = message
-                    _isLoading.value = false // Set loading false hanya jika gagal, karena loadData sudah handle
+                    _isLoading.value = false
                 }
             }
         }

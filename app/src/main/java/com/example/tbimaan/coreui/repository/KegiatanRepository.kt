@@ -13,9 +13,6 @@ class KegiatanRepository {
 
     private val TAG = "KegiatanRepository"
 
-    // =====================================================
-    // GET LIST KEGIATAN (WAJIB BERDASARKAN id_user)
-    // =====================================================
     fun getKegiatan(
         idUser: Int,
         onResult: (List<KegiatanResponse>?) -> Unit
@@ -46,9 +43,6 @@ class KegiatanRepository {
             })
     }
 
-    // =====================================================
-    // GET KEGIATAN BY ID (UNTUK DETAIL / EDIT)
-    // =====================================================
     fun getKegiatanById(
         id: String,
         onResult: (KegiatanResponse?) -> Unit
@@ -78,9 +72,6 @@ class KegiatanRepository {
             })
     }
 
-    // =====================================================
-    // CREATE KEGIATAN (MULTIPART)
-    // =====================================================
     fun createKegiatanMultipart(
         idUser: RequestBody,
         namaKegiatan: RequestBody,
@@ -124,9 +115,6 @@ class KegiatanRepository {
         })
     }
 
-    // =====================================================
-    // UPDATE KEGIATAN (MULTIPART)
-    // =====================================================
     fun updateKegiatanMultipart(
         id: String,
         idUser: RequestBody,
@@ -168,9 +156,7 @@ class KegiatanRepository {
         })
     }
 
-    // =====================================================
-    // DELETE KEGIATAN
-    // =====================================================
+
     fun deleteKegiatan(
         id: String,
         onResult: (Boolean, String) -> Unit

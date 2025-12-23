@@ -41,46 +41,38 @@ data class LoginResponse(
 )
 
 // =========================
-// ✅ FCM MODELS (FIX)
+// ✅ FCM MODELS - Match Backend API
 // =========================
 data class FcmTokenRequest(
-    val userId: Int,
-    val fcmToken: String
+    val id_user: Int,
+    val fcm_token: String
 )
 
-data class FcmSendRequest(
-    val userId: Int,
-    val title: String? = null,
-    val body: String? = null
+data class FcmTokenResponse(
+    val message: String,
+    val id_user: Int
 )
 
 
 
 interface ApiService {
 
-    // =========================
-    // ✅ FCM INVENTARIS (SINKRON DENGAN BACKEND ROUTES)
-    // =========================
-    // SIMPAN TOKEN (dipanggil setelah login)
-    @POST("fcm/token")
-    fun saveInventoryToken(@Body request: FcmTokenRequest): Call<Map<String, String>>
 
-    // (Optional) kirim notif manual dari backend
-    @POST("fcm/send")
-    fun sendInventoryNotification(@Body request: FcmSendRequest): Call<Map<String, String>>
+    @POST("api/user/fcm-token")
+    fun updateFcmToken(@Body request: FcmTokenRequest): Call<FcmTokenResponse>
 
-    // =========================
-    // AUTH
-    // =========================
+    // Hapus FCM token (dipanggil saat logout)
+    @DELETE("api/user/fcm-token/{id}")
+    fun deleteFcmToken(@Path("id") userId: Int): Call<Map<String, String>>
+
+
     @POST("api/auth/register")
     fun registerUser(@Body request: RegisterRequest): Call<RegisterResponse>
 
     @POST("api/auth/login")
     fun loginUser(@Body request: LoginRequest): Call<LoginResponse>
 
-    // =========================
-    // KEUANGAN
-    // =========================
+
     @GET("api/keuangan")
     fun getKeuangan(@Query("id_user") idUser: Int): Call<List<KeuanganResponse>>
 
@@ -112,9 +104,7 @@ interface ApiService {
     @DELETE("api/keuangan/{id}")
     fun deleteKeuangan(@Path("id") id: String): Call<Void>
 
-    // =========================
-    // INVENTARIS
-    // =========================
+
     @GET("api/inventaris")
     fun getInventaris(@Query("id_user") idUser: Int): Call<List<InventarisResponse>>
 
@@ -146,9 +136,7 @@ interface ApiService {
         @Part foto_barang: MultipartBody.Part?
     ): Call<InventarisResponse>
 
-    // =========================
-// KEGIATAN
-// =========================
+
 
     @GET("api/kegiatan")
     fun getKegiatan(
@@ -176,9 +164,7 @@ interface ApiService {
         @Path("id") id: String
     ): Call<Void>
 
-    // =========================
-// KEGIATAN (MULTIPART CREATE)
-// =========================
+
     @Multipart
     @POST("api/kegiatan")
     fun createKegiatanMultipart(
@@ -192,9 +178,7 @@ interface ApiService {
         @Part foto_kegiatan: MultipartBody.Part? = null
     ): Call<KegiatanResponse>
 
-    // =========================
-// KEGIATAN (MULTIPART UPDATE)
-// =========================
+
     @Multipart
     @PUT("api/kegiatan/{id}")
     fun updateKegiatanMultipart(
